@@ -63,7 +63,7 @@ The screenshots show demo data from a small notes app with uploaded dSYMs.
 <img src="docs/screenshots/5-entries.png" alt="Entries of the session up to the crash" width="800">
 
 1. Filter by user steps, app logs or network.
-2. Each row with the offset to the crash, clock time, process and kind, here the last tap before the crash.
+2. Each row with the offset to the crash, clock time, process and type, here the last tap before the crash.
 3. A crash is only stored on the next launch. The gap until then is marked as a relaunch, not as a hang.
 4. The crash itself, with its reason.
 
