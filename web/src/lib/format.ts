@@ -1,38 +1,38 @@
 import type { Frame, Occurrence, Stack } from './types';
 
-const dateTime = new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'medium' });
-const dateMinutes = new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' });
-const time = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'medium' });
+const dateMinutes = new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'short' });
+const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
 
-export const formatDateTime = (value: string | null | undefined) => (value ? dateTime.format(new Date(value)) : 'unbekannt');
+export const formatDateTime = (value: string | null | undefined) => (value ? dateTime.format(new Date(value)) : 'unknown');
 export const formatTime = (value: string) => time.format(new Date(value));
-export const formatDateMinutes = (value: string | null | undefined) => (value ? dateMinutes.format(new Date(value)) : 'unbekannt');
+export const formatDateMinutes = (value: string | null | undefined) => (value ? dateMinutes.format(new Date(value)) : 'unknown');
 
 export function formatBytes(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString('de-DE')} KB`;
-  return `${(bytes / 1024 / 1024).toLocaleString('de-DE', { maximumFractionDigits: 1 })} MB`;
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString('en-GB')} KB`;
+  return `${(bytes / 1024 / 1024).toLocaleString('en-GB', { maximumFractionDigits: 1 })} MB`;
 }
 
-// Offset of a timeline entry relative to the reference point, e.g. "−1,7 s"
+// Offset of a timeline entry relative to the reference point, e.g. "−1.7 s"
 export function relativeSeconds(value: string, reference: string): string {
   const seconds = (new Date(value).getTime() - new Date(reference).getTime()) / 1000;
   const sign = seconds < 0 ? '−' : seconds > 0 ? '+' : '±';
-  return `${sign}${Math.abs(seconds).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s`;
+  return `${sign}${Math.abs(seconds).toLocaleString('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s`;
 }
 
-export const processLabel = (process: string) => (process === 'autofill' ? 'Autofill-Extension' : 'App');
+export const processLabel = (process: string) => (process === 'autofill' ? 'Autofill extension' : 'App');
 
 // Crashes are stored on the next launch, so the last activity is the honest reference for "before the crash"
 export const referenceTime = (occurrence: Pick<Occurrence, 'window' | 'ts'>) => (occurrence.window.exact ? occurrence.ts : occurrence.window.after);
 
 export function crashTimeLabel(occurrence: Pick<Occurrence, 'window' | 'ts'>): string {
   if (occurrence.window.exact) return formatDateTime(occurrence.ts);
-  return `zwischen ${formatTime(occurrence.window.after)} und ${formatTime(occurrence.window.before)} (${formatDateTime(occurrence.window.before).split(',')[0]})`;
+  return `between ${formatTime(occurrence.window.after)} and ${formatTime(occurrence.window.before)} (${formatDateTime(occurrence.window.before).split(',')[0]})`;
 }
 
 export function frameLabel(frame: Frame): string {
   if (frame.function) return frame.function;
-  return frame.offset ?? frame.address ?? 'unbekannt';
+  return frame.offset ?? frame.address ?? 'unknown';
 }
 
 export function frameLocation(frame: Frame): string | null {
@@ -62,22 +62,22 @@ export function occurrenceToMarkdown(title: string, occurrence: Occurrence, link
   return [
     `## ${title}`,
     '',
-    `[In der Diagnose öffnen](${link})`,
+    `[Open in diagnostics](${link})`,
     '',
     `| | |`,
     `|---|---|`,
-    `| Zeitpunkt | ${crashTimeLabel(occurrence)} |`,
-    `| Prozess | ${processLabel(occurrence.process)} |`,
+    `| Time | ${crashTimeLabel(occurrence)} |`,
+    `| Process | ${processLabel(occurrence.process)} |`,
     `| App | ${context.app_version ?? '?'} (${context.app_build ?? '?'}) |`,
-    `| Gerät | ${context.device_model ?? '?'}, iOS ${context.os_version ?? '?'} |`,
+    `| Device | ${context.device_model ?? '?'}, iOS ${context.os_version ?? '?'} |`,
     `| Import | ${context.import ?? '?'} |`,
-    ...(occurrence.duration_ms ? [`| Dauer | ${occurrence.duration_ms} ms |`] : []),
+    ...(occurrence.duration_ms ? [`| Duration | ${occurrence.duration_ms} ms |`] : []),
     '',
-    occurrence.window.exact ? '' : '_Der Absturz wird beim nächsten Start gespeichert. Zeiten sind relativ zur letzten Aktivität davor._',
+    occurrence.window.exact ? '' : '_The crash is stored on the next launch. Times are relative to the last activity before it._',
     '',
     crashed ? stackToMarkdown(crashed) : '',
     '',
-    '**Letzte Schritte davor**',
+    '**Last steps before**',
     ...lastSteps,
   ].join('\n');
 }

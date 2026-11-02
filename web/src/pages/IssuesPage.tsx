@@ -26,7 +26,7 @@ import { ExportUpload } from '../components/ExportUpload';
 import { KindBadge, StatusBadge } from '../components/IssueBadges';
 import { api } from '../lib/api';
 import { formatDateTime, processLabel } from '../lib/format';
-import { STATUS_FILTERS, germanError, issueHref, statusFilter, type StatusFilter } from '../lib/issueList';
+import { STATUS_FILTERS, readableError, issueHref, statusFilter, type StatusFilter } from '../lib/issueList';
 import type { ImportRow, IssueSummary } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useResource } from '../lib/useResource';
@@ -54,10 +54,10 @@ export function IssuesPage() {
     <Stack gap="section">
       <PageHeader
         title="Issues"
-        subtitle="Abstürze und Hänger aus allen Importen. Gleiche Fehler werden über die obersten eigenen Frames zusammengefasst."
+        subtitle="Crashes and hangs from all imports. Identical failures are grouped by their topmost own frames."
         primaryAction={
           <Button asChild>
-            <RouterLink to="/imports">Export importieren</RouterLink>
+            <RouterLink to="/imports">Import export</RouterLink>
           </Button>
         }
       />
@@ -73,7 +73,7 @@ export function IssuesPage() {
       <ActionBar>
         <ActionBarRow className="flex-wrap">
         <Select value={filter} onValueChange={(value) => update('status', value === 'active' ? null : value)}>
-          <SelectTrigger className="w-full sm:w-64" aria-label="Nach Status filtern">
+          <SelectTrigger className="w-full sm:w-64" aria-label="Filter by status">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -83,17 +83,17 @@ export function IssuesPage() {
           </SelectContent>
         </Select>
         <Select value={importId ?? 'all'} onValueChange={(value) => update('import', value === 'all' ? null : value)}>
-          <SelectTrigger className="w-full sm:w-80" aria-label="Nach Import filtern">
+          <SelectTrigger className="w-full sm:w-80" aria-label="Filter by import">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alle Importe</SelectItem>
+            <SelectItem value="all">All imports</SelectItem>
             {(imports.data ?? []).map((row) => (
               <SelectItem key={row.id} value={String(row.id)}>{row.filename}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {hidden > 0 && <span className="typography-small text-text-subtle">{hidden} weitere ausgeblendet</span>}
+        {hidden > 0 && <span className="typography-small text-text-subtle">{hidden} more hidden</span>}
         </ActionBarRow>
       </ActionBar>
       {issues.loading && !issues.data ? (
@@ -102,27 +102,27 @@ export function IssuesPage() {
         <Table density="compact">
           <TableHeader>
             <TableRow>
-              <TableHead className="hidden sm:table-cell">Art</TableHead>
-              <TableHead>Fehler</TableHead>
+              <TableHead className="hidden sm:table-cell">Kind</TableHead>
+              <TableHead>Failure</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="hidden text-right md:table-cell">Vorkommen</TableHead>
-              <TableHead className="hidden md:table-cell">Zuletzt</TableHead>
-              <TableHead className="hidden lg:table-cell">Versionen</TableHead>
-              <TableHead className="hidden lg:table-cell">Prozess</TableHead>
+              <TableHead className="hidden text-right md:table-cell">Occurrences</TableHead>
+              <TableHead className="hidden md:table-cell">Last seen</TableHead>
+              <TableHead className="hidden lg:table-cell">Versions</TableHead>
+              <TableHead className="hidden lg:table-cell">Process</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {issues.error && <TableError columns={COLUMNS} title="Issues konnten nicht geladen werden" description={germanError(issues.error)} onRetry={issues.reload} retryLabel="Erneut versuchen" />}
+            {issues.error && <TableError columns={COLUMNS} title="Issues could not be loaded" description={readableError(issues.error)} onRetry={issues.reload} retryLabel="Try again" />}
             {!issues.error && issues.data?.length === 0 && (
               <TableEmpty
                 columns={COLUMNS}
                 variant="first-use"
-                title="Noch keine Abstürze oder Hänger"
-                description="Importiere einen Diagnose-Export aus der App. Abstürze und Hänger erscheinen dann hier."
+                title="No crashes or hangs yet"
+                description="Import a diagnostics export from the app. Crashes and hangs then appear here."
               />
             )}
             {!issues.error && issues.data && issues.data.length > 0 && visible.length === 0 && (
-              <TableEmpty columns={COLUMNS} variant="no-results" title="Keine Issues für diese Auswahl" description="Wähle oben einen anderen Status oder Import." />
+              <TableEmpty columns={COLUMNS} variant="no-results" title="No issues for this selection" description="Choose a different status or import above." />
             )}
             {visible.map((issue) => (
               <TableRow key={issue.id} onClick={() => navigate(issueHref(issue.id, listQuery))}>

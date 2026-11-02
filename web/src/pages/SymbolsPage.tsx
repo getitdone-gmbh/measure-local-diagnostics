@@ -26,24 +26,24 @@ import { api, upload } from '../lib/api';
 import { formatBytes, formatDateMinutes, formatDateTime } from '../lib/format';
 import type { BuildRow, IssueRef, SymbolsOverview } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
-import { germanError } from '../lib/issueList';
+import { readableError } from '../lib/issueList';
 import { useResource } from '../lib/useResource';
 
 const WATCHER_COMMAND = 'tools/install-archive-watcher.sh';
-const ZIP_COMMAND = 'cd ~/Library/Developer/Xcode/Archives/<Datum>/<App>*.xcarchive && zip -r ~/Desktop/dsyms.zip dSYMs';
+const ZIP_COMMAND = 'cd ~/Library/Developer/Xcode/Archives/<date>/<App>*.xcarchive && zip -r ~/Desktop/dsyms.zip dSYMs';
 
 // Xcode names archives "<App> 27.10.26, 08.05", which only repeats the archive time
 const XCODE_DEFAULT_NAME = /^\S+ \d{2}\.\d{2}\.\d{2}, \d{2}\.\d{2}( \d+)?$/;
 
 function IssueLinks({ issues }: { issues: IssueRef[] }) {
-  if (issues.length === 0) return <span className="text-text-subtle">keine</span>;
+  if (issues.length === 0) return <span className="text-text-subtle">none</span>;
   return (
     <ul className="flex flex-col gap-1">
       {issues.map((issue) => (
         <li key={issue.id}>
           <Link asChild underline="hover">
             <RouterLink to={`/issues/${issue.id}`} title={`Issue ${issue.id}`}>
-              {issue.kind === 'crash' ? 'Absturz' : 'Hänger'}: {issue.title}
+              {issue.kind === 'crash' ? 'Crash' : 'Hang'}: {issue.title}
             </RouterLink>
           </Link>
         </li>
@@ -54,7 +54,7 @@ function IssueLinks({ issues }: { issues: IssueRef[] }) {
 
 // Manual uploads have no archive time, then the upload time is shown and named as such
 const buildTime = (build: BuildRow) =>
-  build.archived_at ? `Archiviert ${formatDateMinutes(build.archived_at)}` : `Hochgeladen ${formatDateMinutes(build.uploaded_at)}`;
+  build.archived_at ? `Archived ${formatDateMinutes(build.archived_at)}` : `Uploaded ${formatDateMinutes(build.uploaded_at)}`;
 
 function BuildVersion({ build }: { build: BuildRow }) {
   const own = `${build.app_version} (${build.app_build})`;
@@ -66,7 +66,7 @@ function BuildVersion({ build }: { build: BuildRow }) {
         <span>{own}</span>
         {build.variant && <Badge variant={build.variant === 'prod' ? 'info' : 'secondary'} tinted>{build.variant === 'prod' ? 'Prod' : 'Dev'}</Badge>}
       </div>
-      {renumbered.length > 0 && <div className="text-text-subtle">In Abstürzen gemeldet als {renumbered.join(', ')}</div>}
+      {renumbered.length > 0 && <div className="text-text-subtle">Reported in crashes as {renumbered.join(', ')}</div>}
       {customName && <div className="text-text-subtle">{customName}</div>}
       <div className="text-text-subtle md:hidden">{buildTime(build)}</div>
     </>
@@ -74,7 +74,7 @@ function BuildVersion({ build }: { build: BuildRow }) {
 }
 
 export function SymbolsPage() {
-  usePageTitle('Symbole');
+  usePageTitle('Symbols');
   const [params] = useSearchParams();
   const returnTo = params.get('from')?.startsWith('/') ? params.get('from') : null;
   const symbols = useResource(() => api<SymbolsOverview>('/api/symbols'), []);
@@ -89,12 +89,12 @@ export function SymbolsPage() {
     try {
       let count = 0;
       for (const file of files) count += (await upload<{ stored: unknown[] }>('/api/symbols', file)).stored.length;
-      toast({ title: `${count} Binaries jetzt lesbar`, description: 'Der Build steht oben in der Liste, Issues wurden neu gruppiert.' });
+      toast({ title: `${count} ${count === 1 ? 'binary' : 'binaries'} now readable`, description: 'The build is at the top of the list, issues were regrouped.' });
       setDone(true);
       symbols.reload();
       builds.reload();
     } catch (reason) {
-      setError(`Upload fehlgeschlagen: ${(reason as Error).message}`);
+      setError(`Upload failed: ${(reason as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -103,15 +103,15 @@ export function SymbolsPage() {
   return (
     <Stack gap="section">
       <PageHeader
-        title="Symbole (dSYMs)"
-        subtitle="Mit den dSYMs eines Builds werden Adressen zu Funktion, Datei und Zeile. Gespeichert wird nur eine kompakte Symboltabelle."
+        title="Symbols (dSYMs)"
+        subtitle="With the dSYMs of a build, addresses become function, file and line. Only a compact symbol table is stored."
       />
       {returnTo && done && (
         <Alert variant="success">
           <AlertDescription>
-            Symbole sind hochgeladen.{' '}
+            Symbols are uploaded.{' '}
             <Link asChild underline="always" color="inherit">
-              <RouterLink to={returnTo}>Zurück zum Issue</RouterLink>
+              <RouterLink to={returnTo}>Back to the issue</RouterLink>
             </Link>
           </AlertDescription>
         </Alert>
@@ -121,9 +121,9 @@ export function SymbolsPage() {
         <PanelSectionHeader
           title="Builds"
           titleAs="h2"
-          description="Jeder Build, dessen dSYMs vorliegen. Damit jedes neue Archiv automatisch hier landet, einmal auf dem Mac im Repo measure-local-diagnostics ausführen:"
+          description="Every build whose dSYMs are available. To have every new archive land here automatically, run this once on the Mac in the measure-local-diagnostics repo:"
         />
-        <CodeSnippet code={WATCHER_COMMAND} language="bash" copy copyLabel="Kopieren" copiedLabel="Kopiert" />
+        <CodeSnippet code={WATCHER_COMMAND} language="bash" copy copyLabel="Copy" copiedLabel="Copied" />
         {builds.loading && !builds.data ? (
           <TableLoading columns={3} rows={2} />
         ) : (
@@ -131,14 +131,14 @@ export function SymbolsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Version</TableHead>
-                <TableHead className="hidden md:table-cell">Zeitpunkt</TableHead>
-                <TableHead>Abstürze und Hänger</TableHead>
+                <TableHead className="hidden md:table-cell">Time</TableHead>
+                <TableHead>Crashes and hangs</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {builds.error && <TableError columns={3} title="Builds konnten nicht geladen werden" description={germanError(builds.error)} onRetry={builds.reload} retryLabel="Erneut versuchen" />}
+              {builds.error && <TableError columns={3} title="Builds could not be loaded" description={readableError(builds.error)} onRetry={builds.reload} retryLabel="Try again" />}
               {!builds.error && builds.data?.length === 0 && (
-                <TableEmpty columns={3} variant="first-use" title="Noch keine Builds" description="Richte mit dem Befehl oben das automatische Hochladen ein oder lade unten eine dSYM-ZIP hoch." />
+                <TableEmpty columns={3} variant="first-use" title="No builds yet" description="Set up automatic uploads with the command above or upload a dSYM ZIP below." />
               )}
               {builds.data?.map((build) => (
                 <TableRow key={build.id}>
@@ -160,18 +160,18 @@ export function SymbolsPage() {
         <TableLoading columns={3} rows={3} />
       ) : (
         <Stack gap="block">
-          <PanelSectionHeader title="Fehlende Symbole" titleAs="h2" description="Eigene Binaries aus importierten Abstürzen und Hängern, für die noch keine dSYMs vorliegen." />
+          <PanelSectionHeader title="Missing symbols" titleAs="h2" description="Own binaries from imported crashes and hangs that have no dSYMs yet." />
           <Table density="compact">
             <TableHeader>
               <TableRow>
                 <TableHead>Binary</TableHead>
                 <TableHead className="hidden md:table-cell">UUID</TableHead>
-                <TableHead>Betroffen</TableHead>
+                <TableHead>Affected</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {symbols.error && <TableError columns={3} title="Symbole konnten nicht geladen werden" description={germanError(symbols.error)} onRetry={symbols.reload} retryLabel="Erneut versuchen" />}
-              {!symbols.error && symbols.data?.missing.length === 0 && <TableEmpty columns={3} title="Nichts fehlt" description="Alle eigenen Binaries aus importierten Abstürzen und Hängern sind lesbar." />}
+              {symbols.error && <TableError columns={3} title="Symbols could not be loaded" description={readableError(symbols.error)} onRetry={symbols.reload} retryLabel="Try again" />}
+              {!symbols.error && symbols.data?.missing.length === 0 && <TableEmpty columns={3} title="Nothing missing" description="All own binaries from imported crashes and hangs are readable." />}
               {symbols.data?.missing.map((image) => (
                 <TableRow key={image.uuid}>
                   <TableCell className="break-words">
@@ -191,15 +191,15 @@ export function SymbolsPage() {
       )}
 
       <Stack gap="block">
-        <PanelSectionHeader title="Manuell hochladen" titleAs="h2" description="dSYMs aus dem Xcode-Archiv des passenden Builds als ZIP packen und hier ablegen." />
-        <CodeSnippet code={ZIP_COMMAND} language="bash" copy copyLabel="Kopieren" copiedLabel="Kopiert" />
+        <PanelSectionHeader title="Upload manually" titleAs="h2" description="Zip the dSYMs from the Xcode archive of the matching build and drop them here." />
+        <CodeSnippet code={ZIP_COMMAND} language="bash" copy copyLabel="Copy" copiedLabel="Copied" />
         <FileUpload
           accept=".zip,application/zip"
           multiple
           loading={loading}
-          loadingText="Symbole werden verarbeitet …"
-          titleText="dSYM-ZIP hierher ziehen oder auswählen"
-          descriptionText="ZIP mit einem oder mehreren .dSYM-Bundles"
+          loadingText="Processing symbols …"
+          titleText="Drop a dSYM ZIP here or choose one"
+          descriptionText="ZIP with one or more .dSYM bundles"
           error={error}
           onFilesSelected={handleFiles}
         />
@@ -207,27 +207,27 @@ export function SymbolsPage() {
 
       {symbols.data && (
         <Stack gap="block">
-          <PanelSectionHeader title="Hochgeladen" titleAs="h2" />
+          <PanelSectionHeader title="Uploaded" titleAs="h2" />
           <Table density="compact">
             <TableHeader>
               <TableRow>
                 <TableHead>Binary</TableHead>
                 <TableHead className="hidden md:table-cell">UUID</TableHead>
-                <TableHead className="hidden sm:table-cell">Größe</TableHead>
-                <TableHead className="hidden lg:table-cell">Hochgeladen</TableHead>
+                <TableHead className="hidden sm:table-cell">Size</TableHead>
+                <TableHead className="hidden lg:table-cell">Uploaded</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {symbols.data.uploaded.length === 0 && <TableEmpty columns={4} title="Noch keine Symbole" />}
+              {symbols.data.uploaded.length === 0 && <TableEmpty columns={4} title="No symbols yet" />}
               {symbols.data.uploaded.map((row) => (
                 <TableRow key={row.debug_id}>
                   <TableCell className="break-words">
                     {row.name} <span className="text-text-subtle">{row.arch}</span>
-                    <div className="text-text-subtle">{row.versions.length ? `App ${row.versions.join(', ')}` : 'In keinem Import verwendet'}</div>
+                    <div className="text-text-subtle">{row.versions.length ? `App ${row.versions.join(', ')}` : 'Not used in any import'}</div>
                   </TableCell>
                   <TableCell className="hidden font-mono md:table-cell">{row.debug_id}</TableCell>
                   <TableCell className="hidden tabular-nums sm:table-cell">{formatBytes(row.size)}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{formatDateTime(row.uploaded_at)} von {row.uploaded_by}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{formatDateTime(row.uploaded_at)} by {row.uploaded_by}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -25,12 +25,12 @@ export function ExportUpload({ onImported }: { onImported: (importIds: number[])
         else ids.push(result.import_id);
       }
       toast({
-        title: `${files.length} Export${files.length === 1 ? '' : 'e'} importiert`,
-        description: `${inserted} neue Einträge, ${issues} ${issues === 1 ? 'Absturz oder Hänger' : 'Abstürze und Hänger'}${duplicates ? `, ${duplicates} bereits importiert` : ''}.${ids.length === 1 ? ' Die Liste zeigt jetzt nur diesen Export.' : ''}`,
+        title: `${files.length} export${files.length === 1 ? '' : 's'} imported`,
+        description: `${inserted} new entries, ${issues} ${issues === 1 ? 'crash or hang' : 'crashes and hangs'}${duplicates ? `, ${duplicates} already imported` : ''}.${ids.length === 1 ? ' The list now shows only this export.' : ''}`,
       });
       onImported(ids);
     } catch (reason) {
-      setError(`Import fehlgeschlagen: ${(reason as Error).message}`);
+      setError(`Import failed: ${(reason as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -41,9 +41,9 @@ export function ExportUpload({ onImported }: { onImported: (importIds: number[])
       accept=".zip,application/zip"
       multiple
       loading={loading}
-      loadingText="Export wird importiert …"
-      titleText="Diagnose-Export hierher ziehen oder auswählen"
-      descriptionText="Diagnose-Export als ZIP mit manifest.json und *.jsonl, so wie ihn die App exportiert"
+      loadingText="Importing export …"
+      titleText="Drop a diagnostics export here or choose one"
+      descriptionText="Diagnostics export as a ZIP with manifest.json and *.jsonl, as the app exports it"
       error={error}
       onFilesSelected={handleFiles}
     />

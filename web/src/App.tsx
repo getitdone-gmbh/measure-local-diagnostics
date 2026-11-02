@@ -21,22 +21,22 @@ import { SymbolsPage } from './pages/SymbolsPage';
 import { TimelinePage } from './pages/TimelinePage';
 
 const NAVIGATION = [
-  { href: '/imports', label: 'Importe', match: (path: string) => path.startsWith('/imports') },
+  { href: '/imports', label: 'Imports', match: (path: string) => path.startsWith('/imports') },
   { href: '/', label: 'Issues', match: (path: string) => path === '/' || path.startsWith('/issues') },
-  { href: '/timeline', label: 'Einträge', match: (path: string) => path.startsWith('/timeline') },
-  { href: '/symbols', label: 'Symbole', match: (path: string) => path.startsWith('/symbols') },
+  { href: '/timeline', label: 'Entries', match: (path: string) => path.startsWith('/timeline') },
+  { href: '/symbols', label: 'Symbols', match: (path: string) => path.startsWith('/symbols') },
 ];
 
 function NotFoundPage() {
-  usePageTitle('Seite nicht gefunden');
+  usePageTitle('Page not found');
   return (
     <DataStatePanel
       kind="empty"
-      title="Seite nicht gefunden"
-      description="Diese Adresse gibt es in der Diagnose-App nicht."
+      title="Page not found"
+      description="This address does not exist in the diagnostics app."
       action={
         <Button asChild variant="secondary">
-          <RouterLink to="/">Zur Issue-Liste</RouterLink>
+          <RouterLink to="/">Go to issues</RouterLink>
         </Button>
       }
     />
@@ -66,26 +66,26 @@ export function App({ user }: { user: string }) {
     <div className="min-h-screen bg-background text-foreground">
       <TopBar>
         <TopBarStart>
-          <TopBarBrand name="Diagnose" />
+          <TopBarBrand name="Diagnostics" />
           <TopBarNav items={items} className="hidden md:flex" />
         </TopBarStart>
         <TopBarEnd>
           <span className="hidden typography-small text-text-subtle md:inline">{user}</span>
           <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => signOut()}>
-            Abmelden
+            Sign out
           </Button>
           <TopBarMobileMenu
             items={items}
             open={menuOpen}
             onOpenChange={setMenuOpen}
             title="Navigation"
-            triggerLabel="Menü öffnen"
-            closeLabel="Menü schließen"
+            triggerLabel="Open menu"
+            closeLabel="Close menu"
             footer={
               <div className="flex items-center justify-between gap-3">
                 <span className="typography-small text-text-subtle">{user}</span>
                 <Button variant="secondary" size="sm" onClick={() => signOut()}>
-                  Abmelden
+                  Sign out
                 </Button>
               </div>
             }

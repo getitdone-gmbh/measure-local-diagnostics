@@ -60,7 +60,7 @@ import {
   referenceTime,
   relativeSeconds,
 } from '../lib/format';
-import { fetchIssueList, germanError, issueHref } from '../lib/issueList';
+import { fetchIssueList, readableError, issueHref } from '../lib/issueList';
 import type { Frame, IssueDetail, IssueStatus, Occurrence, OccurrenceRef, Stack as CrashStack, TimelineEntry } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useResource } from '../lib/useResource';
@@ -102,11 +102,11 @@ function useWideLayout(): boolean {
 function Pager({ label, previous, next, onPrevious, onNext, children }: { label: string; previous: boolean; next: boolean; onPrevious: () => void; onNext: () => void; children: ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1 typography-small text-text-subtle">
-      <Button variant="ghost" size="icon-xs" aria-label={`Vorheriges ${label}`} aria-disabled={!previous} className={previous ? undefined : 'opacity-40'} onClick={() => previous && onPrevious()}>
+      <Button variant="ghost" size="icon-xs" aria-label={`Previous ${label}`} aria-disabled={!previous} className={previous ? undefined : 'opacity-40'} onClick={() => previous && onPrevious()}>
         <ChevronLeft aria-hidden />
       </Button>
       {children}
-      <Button variant="ghost" size="icon-xs" aria-label={`Nächstes ${label}`} aria-disabled={!next} className={next ? undefined : 'opacity-40'} onClick={() => next && onNext()}>
+      <Button variant="ghost" size="icon-xs" aria-label={`Next ${label}`} aria-disabled={!next} className={next ? undefined : 'opacity-40'} onClick={() => next && onNext()}>
         <ChevronRight aria-hidden />
       </Button>
     </span>
@@ -147,8 +147,8 @@ export function IssueDetailPage() {
         <RouterLink to={`/${listQuery ? `?${listQuery}` : ''}`}>Issues</RouterLink>
       </Link>
       {position >= 0 && list.data && (
-        <Pager label="Issue" previous={Boolean(previous)} next={Boolean(next)} onPrevious={() => previous && navigate(issueHref(previous.id, listQuery))} onNext={() => next && navigate(issueHref(next.id, listQuery))}>
-          Issue {position + 1} von {list.data.length}
+        <Pager label="issue" previous={Boolean(previous)} next={Boolean(next)} onPrevious={() => previous && navigate(issueHref(previous.id, listQuery))} onNext={() => next && navigate(issueHref(next.id, listQuery))}>
+          Issue {position + 1} of {list.data.length}
         </Pager>
       )}
     </div>
@@ -158,13 +158,13 @@ export function IssueDetailPage() {
     const notFound = /not found/i.test(issue.error);
     return (
       <Stack gap="section">
-        <PageHeader variant="record" title={notFound ? 'Issue nicht gefunden' : 'Issue konnte nicht geladen werden'} titleAs="h1" breadcrumbs={breadcrumbs} />
+        <PageHeader variant="record" title={notFound ? 'Issue not found' : 'Issue could not be loaded'} titleAs="h1" breadcrumbs={breadcrumbs} />
         <DataStatePanel
           kind={notFound ? 'empty' : 'error'}
-          title={notFound ? 'Dieses Issue gibt es nicht mehr' : 'Laden fehlgeschlagen'}
-          description={notFound ? 'Das Issue wurde gelöscht, zum Beispiel mit seinem Import, oder die Adresse ist falsch.' : germanError(issue.error)}
+          title={notFound ? 'This issue no longer exists' : 'Loading failed'}
+          description={notFound ? 'The issue was deleted, for example together with its import, or the address is wrong.' : readableError(issue.error)}
           onRetry={notFound ? undefined : issue.reload}
-          retryLabel="Erneut versuchen"
+          retryLabel="Try again"
         />
       </Stack>
     );
@@ -173,7 +173,7 @@ export function IssueDetailPage() {
   if (!issue.data) {
     return (
       <Stack gap="section" aria-busy="true">
-        <PageHeader variant="record" title={<Skeleton variant="text" className="h-8 w-80 max-w-full" label="Issue wird geladen" />} titleAs="h1" breadcrumbs={breadcrumbs} />
+        <PageHeader variant="record" title={<Skeleton variant="text" className="h-8 w-80 max-w-full" label="Loading issue" />} titleAs="h1" breadcrumbs={breadcrumbs} />
         <Skeleton variant="block" className="h-20" />
         <Skeleton variant="row" rows={8} />
       </Stack>
@@ -203,7 +203,7 @@ export function IssueDetailPage() {
               <IssueStatusSelect issue={data} onSaved={issue.reload} />
               {current && (
                 <Button variant="outline" asChild>
-                  <RouterLink to={timelineLink(current)}>In Einträgen zeigen (±60 s)</RouterLink>
+                  <RouterLink to={timelineLink(current)}>Show in entries (±60 s)</RouterLink>
                 </Button>
               )}
               {!wide && (
@@ -217,16 +217,16 @@ export function IssueDetailPage() {
           tabs={
             <TabsList className="max-w-full justify-start overflow-x-auto max-sm:[mask-image:linear-gradient(to_right,black_80%,transparent)]">
               <TabsTrigger value="stack">
-                Stacktrace {current && <TabsCount>{crashed?.frames.length ?? 0}</TabsCount>}
+                Stack trace {current && <TabsCount>{crashed?.frames.length ?? 0}</TabsCount>}
               </TabsTrigger>
               <TabsTrigger value="threads">
                 Threads {current && <TabsCount>{others.length}</TabsCount>}
               </TabsTrigger>
               <TabsTrigger value="timeline">
-                Einträge {current && <TabsCount>{current.timeline.length}</TabsCount>}
+                Entries {current && <TabsCount>{current.timeline.length}</TabsCount>}
               </TabsTrigger>
               <TabsTrigger value="occurrences">
-                Vorkommen <TabsCount>{data.occurrences.length}</TabsCount>
+                Occurrences <TabsCount>{data.occurrences.length}</TabsCount>
               </TabsTrigger>
               <TabsTrigger value="images">
                 Binaries {current && <TabsCount>{current.images.length}</TabsCount>}
@@ -242,7 +242,7 @@ export function IssueDetailPage() {
         <div className="grid gap-grid-gutter xl:grid-cols-12">
           <div className="min-w-0 xl:col-span-8">
             {occurrence.error ? (
-              <DataStatePanel kind="error" title="Vorkommen konnte nicht geladen werden" description={germanError(occurrence.error)} onRetry={occurrence.reload} retryLabel="Erneut versuchen" />
+              <DataStatePanel kind="error" title="Occurrence could not be loaded" description={readableError(occurrence.error)} onRetry={occurrence.reload} retryLabel="Try again" />
             ) : !current ? (
               <Stack gap="block" aria-busy="true">
                 <Skeleton variant="row-single" />
@@ -251,7 +251,7 @@ export function IssueDetailPage() {
             ) : (
               <>
                 <TabsContent value="stack">
-                  {crashed ? <StackTab stack={crashed} hang={data.kind === 'hang'} /> : <DataStatePanel kind="empty" title="Kein Stacktrace im Event" />}
+                  {crashed ? <StackTab stack={crashed} hang={data.kind === 'hang'} /> : <DataStatePanel kind="empty" title="No stack trace in the event" />}
                 </TabsContent>
                 <TabsContent value="threads">
                   <ThreadsTab stacks={others} />
@@ -307,7 +307,7 @@ function subtitleFor(kind: string, occurrence: Occurrence | null, ref: Occurrenc
   if (!ref) return '';
   const stack = occurrence?.stacks[0];
   const reason = [(stack?.reason ?? '').replace(/^\*+\s*/, ''), stack?.signal].filter(Boolean).join(', ');
-  const hang = occurrence?.duration_ms ? `${occurrence.duration_ms.toLocaleString('de-DE')} ms blockiert` : '';
+  const hang = occurrence?.duration_ms ? `${occurrence.duration_ms.toLocaleString('en-GB')} ms blocked` : '';
   return [[kind, reason || hang].filter(Boolean).join(': '), processLabel(ref.process), `${ref.app_version} (${ref.app_build})`, `${ref.device_model}, iOS ${ref.os_version}`, formatDateTime(ref.ts)]
     .filter(Boolean)
     .join(' · ');
@@ -323,12 +323,12 @@ function CopyMarkdownButton({ title, occurrence }: { title: string; occurrence: 
   async function copy() {
     try {
       await navigator.clipboard.writeText(occurrenceToMarkdown(title, occurrence, window.location.href));
-      toast({ title: 'Als Markdown kopiert', description: 'Kann direkt in ein Ticket eingefügt werden.' });
+      toast({ title: 'Copied as Markdown', description: 'Ready to paste into a ticket.' });
     } catch {
-      toast({ variant: 'destructive', title: 'Kopieren nicht möglich', description: 'Der Browser hat den Zugriff auf die Zwischenablage verweigert.' });
+      toast({ variant: 'destructive', title: 'Copy not possible', description: 'The browser denied access to the clipboard.' });
     }
   }
-  return <Button onClick={copy}>Als Markdown kopieren</Button>;
+  return <Button onClick={copy}>Copy as Markdown</Button>;
 }
 
 function IssueStatusSelect({ issue, onSaved }: { issue: IssueDetail; onSaved: () => void }) {
@@ -340,13 +340,13 @@ function IssueStatusSelect({ issue, onSaved }: { issue: IssueDetail; onSaved: ()
       await api(`/api/issues/${issue.id}`, { method: 'PATCH', body: JSON.stringify({ status: next }) });
       onSaved();
       if (undo) {
-        toast({ title: `Status wiederhergestellt: ${statusLabels[next]}` });
+        toast({ title: `Status restored: ${statusLabels[next]}` });
         return;
       }
       const leavesList = next === 'resolved' || next === 'ignored';
       const shown = toast({
         title: `Status: ${statusLabels[next]}`,
-        description: leavesList ? 'Erscheint nicht mehr unter „Offen und in Analyse“.' : undefined,
+        description: leavesList ? 'No longer shown under “Open and investigating”.' : undefined,
         action: (
           <Button
             variant="outline"
@@ -356,13 +356,13 @@ function IssueStatusSelect({ issue, onSaved }: { issue: IssueDetail; onSaved: ()
               apply(previous, next, true);
             }}
           >
-            Rückgängig
+            Undo
           </Button>
         ) as never,
       });
     } catch (reason) {
       setStatus(previous);
-      toast({ variant: 'destructive', title: 'Status nicht gespeichert', description: `${germanError((reason as Error).message)} Bitte erneut versuchen.` });
+      toast({ variant: 'destructive', title: 'Status not saved', description: `${readableError((reason as Error).message)} Please try again.` });
     }
   }
 
@@ -388,18 +388,18 @@ function IssueKpis({ issue, crashed, missing }: { issue: IssueDetail; crashed: C
   const versions = [...new Set(issue.occurrences.map((row) => `${row.app_version} (${row.app_build})`))];
   return (
     <KpiStrip>
-      <MetricItem variant="strip" label="Vorkommen" value={issue.occurrences.length} />
-      <MetricItem variant="strip" label="Zuletzt gesehen" value={formatDateTime(times[times.length - 1])} caption={times.length > 1 ? `zuerst ${formatDateTime(times[0])}` : undefined} />
-      <MetricItem variant="strip" label={versions.length === 1 ? 'Version' : 'Versionen'} value={versions.join(', ')} />
-      <MetricItem variant="strip" label="Eigene Frames" value={crashed ? ownFrames(crashed).length : '–'} />
+      <MetricItem variant="strip" label="Occurrences" value={issue.occurrences.length} />
+      <MetricItem variant="strip" label="Last seen" value={formatDateTime(times[times.length - 1])} caption={times.length > 1 ? `first ${formatDateTime(times[0])}` : undefined} />
+      <MetricItem variant="strip" label={versions.length === 1 ? 'Version' : 'Versions'} value={versions.join(', ')} />
+      <MetricItem variant="strip" label="Own frames" value={crashed ? ownFrames(crashed).length : '–'} />
       <MetricItem
         variant="strip"
-        label="Fehlende dSYMs"
+        label="Missing dSYMs"
         value={missing}
         caption={
           missing > 0 ? (
             <Link asChild underline="always" color="inherit">
-              <RouterLink to={`/symbols?from=${encodeURIComponent(window.location.pathname + window.location.search)}`}>hochladen</RouterLink>
+              <RouterLink to={`/symbols?from=${encodeURIComponent(window.location.pathname + window.location.search)}`}>upload</RouterLink>
             </Link>
           ) : undefined
         }
@@ -429,7 +429,7 @@ function ContextAttributes({
 }) {
   const index = issue.occurrences.findIndex((row) => row.id === selected?.id);
   const context = occurrence?.context ?? {};
-  const network = [context.network_type === 'wifi' ? 'WLAN' : context.network_type, typeof context.network_generation === 'string' ? context.network_generation.toUpperCase() : null]
+  const network = [context.network_type === 'wifi' ? 'Wi-Fi' : context.network_type, typeof context.network_generation === 'string' ? context.network_generation.toUpperCase() : null]
     .filter(Boolean)
     .join(', ');
 
@@ -437,43 +437,43 @@ function ContextAttributes({
     if (note === issue.note) return;
     try {
       await api(`/api/issues/${issue.id}`, { method: 'PATCH', body: JSON.stringify({ note }) });
-      toast({ title: note ? 'Notiz gespeichert' : 'Notiz entfernt' });
+      toast({ title: note ? 'Note saved' : 'Note removed' });
       onNoteSaved();
     } catch (reason) {
-      toast({ variant: 'destructive', title: 'Notiz nicht gespeichert', description: `${germanError((reason as Error).message)} Bitte erneut versuchen.` });
+      toast({ variant: 'destructive', title: 'Note not saved', description: `${readableError((reason as Error).message)} Please try again.` });
     }
   }
 
   return (
     <Attributes
       variant="aside"
-      title={untitled ? undefined : 'Kontext'}
+      title={untitled ? undefined : 'Context'}
       titleAs="h2"
       state={error ? 'error' : occurrence ? 'ready' : 'loading'}
       errorState={
         <Stack gap="block">
-          <span>{error ? germanError(error) : ''}</span>
+          <span>{error ? readableError(error) : ''}</span>
           <Button variant="outline" size="sm" onClick={onRetry}>
-            Erneut versuchen
+            Try again
           </Button>
         </Stack>
       }
     >
       {issue.occurrences.length > 1 && (
-        <Attribute label="Vorkommen">
-          <Pager label="Vorkommen" previous={index > 0} next={index < issue.occurrences.length - 1} onPrevious={() => onSelect(issue.occurrences[index - 1].id)} onNext={() => onSelect(issue.occurrences[index + 1].id)}>
-            {index + 1} von {issue.occurrences.length}
+        <Attribute label="Occurrence">
+          <Pager label="occurrence" previous={index > 0} next={index < issue.occurrences.length - 1} onPrevious={() => onSelect(issue.occurrences[index - 1].id)} onNext={() => onSelect(issue.occurrences[index + 1].id)}>
+            {index + 1} of {issue.occurrences.length}
           </Pager>
         </Attribute>
       )}
-      {occurrence && <Attribute label={occurrence.window.exact ? 'Zeitpunkt' : 'Absturz'} value={crashTimeLabel(occurrence)} />}
-      {occurrence && !occurrence.window.exact && <Attribute label="Gespeichert beim Neustart" value={formatDateTime(occurrence.window.before)} />}
-      {occurrence?.duration_ms ? <Attribute label="Dauer des Hängers" value={`${occurrence.duration_ms.toLocaleString('de-DE')} ms`} /> : null}
-      <Attribute label="Prozess" value={selected ? processLabel(selected.process) : ''} />
+      {occurrence && <Attribute label={occurrence.window.exact ? 'Time' : 'Crash'} value={crashTimeLabel(occurrence)} />}
+      {occurrence && !occurrence.window.exact && <Attribute label="Stored on relaunch" value={formatDateTime(occurrence.window.before)} />}
+      {occurrence?.duration_ms ? <Attribute label="Hang duration" value={`${occurrence.duration_ms.toLocaleString('en-GB')} ms`} /> : null}
+      <Attribute label="Process" value={selected ? processLabel(selected.process) : ''} />
       <Attribute label="App" value={`${context.app_version ?? selected?.app_version ?? '?'} (${context.app_build ?? selected?.app_build ?? '?'})`} />
-      <Attribute label="Gerät" value={`${context.device_model ?? selected?.device_model ?? '?'}, iOS ${context.os_version ?? selected?.os_version ?? '?'}`} />
-      <Attribute label="Netz" value={network || 'unbekannt'} />
-      <Attribute label="Energiesparmodus" value={context.device_low_power_mode ? 'an' : 'aus'} />
+      <Attribute label="Device" value={`${context.device_model ?? selected?.device_model ?? '?'}, iOS ${context.os_version ?? selected?.os_version ?? '?'}`} />
+      <Attribute label="Network" value={network || 'unknown'} />
+      <Attribute label="Low Power Mode" value={context.device_low_power_mode ? 'on' : 'off'} />
       <Attribute label="Import">
         {selected ? (
           <Link asChild underline="hover">
@@ -483,7 +483,7 @@ function ContextAttributes({
           </Link>
         ) : null}
       </Attribute>
-      <Attribute label="Notiz">
+      <Attribute label="Note">
         <NoteField note={issue.note} onCommit={saveNote} />
       </Attribute>
     </Attributes>
@@ -501,8 +501,8 @@ function NoteField({ note, onCommit }: { note: string; onCommit: (note: string) 
     <Input
       ref={field}
       value={draft}
-      placeholder="Ticket oder Ursache"
-      aria-label="Notiz, z. B. Ticket, Ursache oder Fix"
+      placeholder="Ticket or cause"
+      aria-label="Note, e.g. ticket, cause or fix"
       onChange={(event) => setDraft(event.target.value)}
       onBlur={() => onCommit(draft.trim())}
       onKeyDown={(event) => {
@@ -546,9 +546,9 @@ function FrameRowView({ frame, isCrashSite, hang }: { frame: Frame; isCrashSite:
       <TableCell className="break-words">
         <div className="flex flex-wrap items-center gap-1">
           <span className="font-mono break-words">{breakable(frameLabel(frame))}</span>
-          {isCrashSite && <Badge variant={hang ? 'warning' : 'destructive'} tinted>{hang ? 'Hängt hier' : 'Absturzstelle'}</Badge>}
-          {frame.in_app && !frame.entry_point && <Badge variant="info" tinted>Eigener Code</Badge>}
-          {frame.entry_point && <Badge variant="secondary" tinted>Einstieg</Badge>}
+          {isCrashSite && <Badge variant={hang ? 'warning' : 'destructive'} tinted>{hang ? 'Hangs here' : 'Crash site'}</Badge>}
+          {frame.in_app && !frame.entry_point && <Badge variant="info" tinted>Own code</Badge>}
+          {frame.entry_point && <Badge variant="secondary" tinted>Entry point</Badge>}
           {library && <Badge variant="outline">{library}</Badge>}
         </div>
         <div className="text-text-subtle sm:hidden">
@@ -573,12 +573,12 @@ function FramesTable({ stack, onlyOwn, crashed, hang }: { stack: CrashStack; onl
           <TableHead className="hidden w-12 text-right sm:table-cell">#</TableHead>
           <TableHead>
             <span className="inline-flex items-center gap-1">
-              Funktion
-              <HelpIcon label="Warum System-Frames nur Adressen zeigen" content="Systembibliotheken von iOS werden nicht aufgelöst, dafür fehlen die Symbole von Apple. Entscheidend sind die Absturzstelle und die eigenen Frames." />
+              Function
+              <HelpIcon label="Why system frames show only addresses" content="iOS system libraries are not resolved because Apple's symbols are not available. What matters are the crash site and your own frames." />
             </span>
           </TableHead>
           <TableHead className="hidden sm:table-cell">Binary</TableHead>
-          <TableHead className="hidden md:table-cell">Datei</TableHead>
+          <TableHead className="hidden md:table-cell">File</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -594,7 +594,7 @@ function FramesTable({ stack, onlyOwn, crashed, hang }: { stack: CrashStack; onl
               <TableCell className="hidden sm:table-cell" />
               <TableCell colSpan={3}>
                 <Button variant="link" size="inline" onClick={() => setExpanded((current) => new Set(current).add(row.key))}>
-                  {row.collapsed.length} System-Frames ({row.binary}) einblenden
+                  Show {row.collapsed.length} system frames ({row.binary})
                 </Button>
               </TableCell>
             </TableRow>
@@ -602,7 +602,7 @@ function FramesTable({ stack, onlyOwn, crashed, hang }: { stack: CrashStack; onl
         )}
         {frames.length === 0 && (
           <TableRow>
-            <TableCell colSpan={4} className="text-text-subtle">Keine eigenen Frames in diesem Thread.</TableCell>
+            <TableCell colSpan={4} className="text-text-subtle">No own frames in this thread.</TableCell>
           </TableRow>
         )}
       </TableBody>
@@ -613,8 +613,8 @@ function FramesTable({ stack, onlyOwn, crashed, hang }: { stack: CrashStack; onl
 function FrameScope({ stack, value, onChange }: { stack: CrashStack; value: 'all' | 'own'; onChange: (value: 'all' | 'own') => void }) {
   return (
     <ToggleGroup type="single" variant="segmented" value={value} onValueChange={(next) => next && onChange(next as 'all' | 'own')} aria-label="Frames">
-      <ToggleGroupItem value="all">Alle Frames {stack.frames.length}</ToggleGroupItem>
-      <ToggleGroupItem value="own">Eigener Code {stack.frames.filter((frame) => frame.in_app || frame.library).length}</ToggleGroupItem>
+      <ToggleGroupItem value="all">All frames {stack.frames.length}</ToggleGroupItem>
+      <ToggleGroupItem value="own">Own code {stack.frames.filter((frame) => frame.in_app || frame.library).length}</ToggleGroupItem>
     </ToggleGroup>
   );
 }
@@ -634,7 +634,7 @@ function StackTab({ stack, hang }: { stack: CrashStack; hang: boolean }) {
 }
 
 function ThreadsTab({ stacks }: { stacks: CrashStack[] }) {
-  if (stacks.length === 0) return <DataStatePanel kind="empty" title="Keine weiteren Threads im Event" />;
+  if (stacks.length === 0) return <DataStatePanel kind="empty" title="No other threads in the event" />;
   const withOwn = stacks.filter((stack) => ownFrames(stack).length > 0);
   const systemOnly = stacks.filter((stack) => ownFrames(stack).length === 0);
   return (
@@ -642,7 +642,7 @@ function ThreadsTab({ stacks }: { stacks: CrashStack[] }) {
       {withOwn.map((stack, index) => (
         <AccordionItem key={index} value={String(index)}>
           <AccordionTrigger>
-            {stack.name} · {ownFrames(stack).length} eigene Frames
+            {stack.name} · {ownFrames(stack).length} own frames
           </AccordionTrigger>
           <AccordionContent>
             <FramesTable stack={stack} onlyOwn={false} crashed={false} />
@@ -651,7 +651,7 @@ function ThreadsTab({ stacks }: { stacks: CrashStack[] }) {
       ))}
       {systemOnly.length > 0 && (
         <AccordionItem value="system">
-          <AccordionTrigger>{systemOnly.length} Threads nur mit System-Frames</AccordionTrigger>
+          <AccordionTrigger>{systemOnly.length} threads with system frames only</AccordionTrigger>
           <AccordionContent>
             <Stack gap="block">
               {systemOnly.map((stack, index) => (
@@ -669,10 +669,10 @@ function ThreadsTab({ stacks }: { stacks: CrashStack[] }) {
 }
 
 const timelineFilters = {
-  all: 'Alles',
-  steps: 'Bedienschritte',
-  logs: 'App-Logs',
-  network: 'Netzwerk',
+  all: 'All',
+  steps: 'User steps',
+  logs: 'App logs',
+  network: 'Network',
 } as const;
 type TimelineFilter = keyof typeof timelineFilters;
 
@@ -720,7 +720,7 @@ function TimelineTab({ entries, occurrence }: { entries: TimelineEntry[]; occurr
       <ActionBar>
         <ActionBarRow>
           <div className="max-w-full overflow-x-auto max-sm:[mask-image:linear-gradient(to_right,black_80%,transparent)]">
-            <ToggleGroup type="single" variant="segmented" value={filter} onValueChange={(next) => next && setFilter(next as TimelineFilter)} aria-label="Einträge filtern">
+            <ToggleGroup type="single" variant="segmented" value={filter} onValueChange={(next) => next && setFilter(next as TimelineFilter)} aria-label="Filter entries">
               {(Object.keys(timelineFilters) as TimelineFilter[]).map((key) => (
                 <ToggleGroupItem key={key} value={key} className="whitespace-nowrap">
                   {timelineFilters[key]} {counts[key]}
@@ -735,21 +735,21 @@ function TimelineTab({ entries, occurrence }: { entries: TimelineEntry[]; occurr
           <TableRow>
             <TableHead className="w-24 text-right">
               <span className="inline-flex items-center gap-1">
-                Relativ
+                Relative
                 <HelpIcon
-                  label="Wie die Zeit gemessen wird"
+                  label="How time is measured"
                   content={
                     occurrence.window.exact
-                      ? 'Sekunden relativ zum Hänger.'
-                      : 'Ein Absturz wird erst beim nächsten Start gespeichert. Die Zeit zählt deshalb ab der letzten Aktivität davor.'
+                      ? 'Seconds relative to the hang.'
+                      : 'A crash is only stored on the next launch. Time therefore counts from the last activity before it.'
                   }
                 />
               </span>
             </TableHead>
-            <TableHead className="hidden w-32 sm:table-cell">Uhrzeit</TableHead>
-            <TableHead className="hidden w-40 md:table-cell">Prozess</TableHead>
-            <TableHead className="hidden w-36 sm:table-cell">Typ</TableHead>
-            <TableHead>Inhalt</TableHead>
+            <TableHead className="hidden w-32 sm:table-cell">Clock time</TableHead>
+            <TableHead className="hidden w-40 md:table-cell">Process</TableHead>
+            <TableHead className="hidden w-36 sm:table-cell">Type</TableHead>
+            <TableHead>Content</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -758,7 +758,7 @@ function TimelineTab({ entries, occurrence }: { entries: TimelineEntry[]; occurr
               return (
                 <TableRow key={`gap-${position}`}>
                   <TableCell colSpan={5} className="text-center text-text-subtle">
-                    {row.gap.toLocaleString('de-DE', { maximumFractionDigits: 1 })} s keine Aktivität
+                    {row.gap.toLocaleString('en-GB', { maximumFractionDigits: 1 })} s without activity
                   </TableCell>
                 </TableRow>
               );
@@ -767,7 +767,7 @@ function TimelineTab({ entries, occurrence }: { entries: TimelineEntry[]; occurr
               return (
                 <TableRow key={`restart-${position}`}>
                   <TableCell colSpan={5} className="text-center text-text-subtle">
-                    App beendet, Neustart um {formatTime(row.restart)}
+                    App terminated, relaunched at {formatTime(row.restart)}
                   </TableCell>
                 </TableRow>
               );
@@ -776,7 +776,7 @@ function TimelineTab({ entries, occurrence }: { entries: TimelineEntry[]; occurr
             const isIssue = entry.id === occurrence.id;
             return (
               <TableRow key={entry.id} className={isIssue ? 'bg-table-background-selected' : undefined} data-state={isIssue ? 'selected' : undefined} aria-current={isIssue ? 'true' : undefined}>
-                <TableCell className="text-right tabular-nums whitespace-nowrap">{isIssue && !occurrence.window.exact ? 'danach' : relativeSeconds(entry.ts, reference)}</TableCell>
+                <TableCell className="text-right tabular-nums whitespace-nowrap">{isIssue && !occurrence.window.exact ? 'after' : relativeSeconds(entry.ts, reference)}</TableCell>
                 <TableCell className="hidden tabular-nums whitespace-nowrap sm:table-cell">{formatTime(entry.ts)}</TableCell>
                 <TableCell className="hidden md:table-cell">{processLabel(entry.process)}</TableCell>
                 <TableCell className="hidden sm:table-cell">
@@ -804,10 +804,10 @@ function OccurrencesTab({ rows, selected, onSelect }: { rows: OccurrenceRef[]; s
     <Table density="compact">
       <TableHeader>
         <TableRow>
-          <TableHead>Zeit</TableHead>
+          <TableHead>Time</TableHead>
           <TableHead className="hidden sm:table-cell">Version</TableHead>
-          <TableHead className="hidden md:table-cell">Gerät</TableHead>
-          <TableHead>Prozess</TableHead>
+          <TableHead className="hidden md:table-cell">Device</TableHead>
+          <TableHead>Process</TableHead>
           <TableHead className="hidden lg:table-cell">Import</TableHead>
         </TableRow>
       </TableHeader>
@@ -846,7 +846,7 @@ function ImagesTab({ images }: { images: Occurrence['images'] }) {
         <TableRow>
           <TableHead>Binary</TableHead>
           <TableHead className="hidden sm:table-cell">UUID</TableHead>
-          <TableHead>Symbole</TableHead>
+          <TableHead>Symbols</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -858,7 +858,7 @@ function ImagesTab({ images }: { images: Occurrence['images'] }) {
             </TableCell>
             <TableCell className="hidden font-mono sm:table-cell">{image.uuid} <span className="text-text-subtle">{image.arch}</span></TableCell>
             <TableCell>
-              <Badge variant={image.symbols ? 'success' : 'warning'} tinted>{image.symbols ? 'vorhanden' : 'fehlen'}</Badge>
+              <Badge variant={image.symbols ? 'success' : 'warning'} tinted>{image.symbols ? 'available' : 'missing'}</Badge>
             </TableCell>
           </TableRow>
         ))}

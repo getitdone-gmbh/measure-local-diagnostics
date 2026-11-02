@@ -23,7 +23,7 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ExportUpload } from '../components/ExportUpload';
 import { api } from '../lib/api';
 import { formatDateTime } from '../lib/format';
-import { germanError } from '../lib/issueList';
+import { readableError } from '../lib/issueList';
 import type { ImportRow } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useResource } from '../lib/useResource';
@@ -31,7 +31,7 @@ import { useResource } from '../lib/useResource';
 const COLUMNS = 7;
 
 export function ImportsPage() {
-  usePageTitle('Importe');
+  usePageTitle('Imports');
   const { hash } = useLocation();
   const navigate = useNavigate();
   const imports = useResource(() => api<ImportRow[]>('/api/imports'), []);
@@ -42,23 +42,23 @@ export function ImportsPage() {
   async function remove(row: ImportRow) {
     try {
       await api(`/api/imports/${row.id}`, { method: 'DELETE' });
-      toast({ title: 'Import gelöscht', description: row.filename });
+      toast({ title: 'Import deleted', description: row.filename });
       imports.reload();
     } catch (reason) {
-      toast({ variant: 'destructive', title: 'Import nicht gelöscht', description: `${germanError((reason as Error).message)} Bitte erneut versuchen.` });
+      toast({ variant: 'destructive', title: 'Import not deleted', description: `${readableError((reason as Error).message)} Please try again.` });
     }
   }
 
   return (
     <Stack gap="section">
       <PageHeader
-        title="Importe"
+        title="Imports"
         subtitle={
           <span className="inline-flex flex-wrap items-center gap-1">
-            Jeder Export wird nur einmal übernommen. Importe werden nach Ablauf der Frist gelöscht.
+            Each export is imported only once. Imports are deleted when their retention period ends.
             <HelpIcon
-              label="Wie Importe zusammengeführt werden"
-              content="Überlappende Exporte desselben Geräts ergänzen sich: Einträge, die schon importiert sind, werden übersprungen."
+              label="How imports are merged"
+              content="Overlapping exports from the same device complement each other: entries that are already imported are skipped."
             />
           </span>
         }
@@ -75,19 +75,19 @@ export function ImportsPage() {
         <Table density="compact">
           <TableHeader>
             <TableRow>
-              <TableHead>Datei</TableHead>
-              <TableHead className="hidden md:table-cell">Gerät</TableHead>
+              <TableHead>File</TableHead>
+              <TableHead className="hidden md:table-cell">Device</TableHead>
               <TableHead className="hidden md:table-cell">App</TableHead>
-              <TableHead className="hidden lg:table-cell">Exportiert</TableHead>
-              <TableHead className="hidden lg:table-cell">Vollständig</TableHead>
-              <TableHead className="hidden lg:table-cell">Wird gelöscht am</TableHead>
-              <TableHead><span className="sr-only">Aktionen</span></TableHead>
+              <TableHead className="hidden lg:table-cell">Exported</TableHead>
+              <TableHead className="hidden lg:table-cell">Complete</TableHead>
+              <TableHead className="hidden lg:table-cell">Deleted on</TableHead>
+              <TableHead><span className="sr-only">Actions</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {imports.error && <TableError columns={COLUMNS} title="Importe konnten nicht geladen werden" description={germanError(imports.error)} onRetry={imports.reload} retryLabel="Erneut versuchen" />}
+            {imports.error && <TableError columns={COLUMNS} title="Imports could not be loaded" description={readableError(imports.error)} onRetry={imports.reload} retryLabel="Try again" />}
             {!imports.error && imports.data?.length === 0 && (
-              <TableEmpty columns={COLUMNS} variant="first-use" title="Noch keine Importe" description="Ziehe einen Diagnose-Export in das Feld oben." />
+              <TableEmpty columns={COLUMNS} variant="first-use" title="No imports yet" description="Drop a diagnostics export into the field above." />
             )}
             {imports.data?.map((row) => (
               <TableRow key={row.id} id={`import-${row.id}`} className={hash === `#import-${row.id}` ? 'bg-table-background-selected' : undefined} data-state={hash === `#import-${row.id}` ? 'selected' : undefined}>
@@ -95,7 +95,7 @@ export function ImportsPage() {
                   <Link asChild underline="hover" color="neutral">
                     <RouterLink to={`/timeline?import=${row.id}`}>{row.filename}</RouterLink>
                   </Link>
-                  <div className="text-text-subtle">von {row.uploaded_by}, {formatDateTime(row.uploaded_at)}</div>
+                  <div className="text-text-subtle">by {row.uploaded_by}, {formatDateTime(row.uploaded_at)}</div>
                   <div className="text-text-subtle md:hidden">{row.device_model}, App {row.app_version} ({row.app_build})</div>
                   <ImportContent row={row} />
                 </TableCell>
@@ -104,22 +104,22 @@ export function ImportsPage() {
                 <TableCell className="hidden whitespace-nowrap lg:table-cell">{formatDateTime(row.exported_at)}</TableCell>
                 <TableCell className="hidden lg:table-cell">
                   {row.flush_complete === false ? (
-                    <span title="Die App konnte die letzten Measure-Ereignisse vor dem Export nicht mehr übergeben.">
-                      <Badge variant="warning" tinted>unvollständig</Badge>
+                    <span title="The app could not hand over the last Measure events before the export.">
+                      <Badge variant="warning" tinted>incomplete</Badge>
                     </span>
                   ) : (
-                    <Badge variant="success" tinted>ja</Badge>
+                    <Badge variant="success" tinted>yes</Badge>
                   )}
                 </TableCell>
                 <TableCell className="hidden whitespace-nowrap lg:table-cell">{formatDateTime(row.expires_at)}</TableCell>
                 <TableCell className="text-right">
                   <ConfirmDialog
-                    trigger={<Button variant="ghost" size="sm">Löschen</Button>}
-                    title="Import löschen?"
-                    description={`${row.filename} und alle daraus übernommenen Einträge werden endgültig gelöscht.`}
+                    trigger={<Button variant="ghost" size="sm">Delete</Button>}
+                    title="Delete import?"
+                    description={`${row.filename} and all entries imported from it will be deleted permanently.`}
                     tone="destructive"
-                    confirmLabel="Löschen"
-                    cancelLabel="Abbrechen"
+                    confirmLabel="Delete"
+                    cancelLabel="Cancel"
                     onConfirm={() => remove(row)}
                   />
                 </TableCell>
@@ -141,7 +141,7 @@ function ImportContent({ row }: { row: ImportRow }) {
       </Link>
       <span className="text-text-subtle"> · </span>
       <Link asChild underline="hover">
-        <RouterLink to={`/timeline?import=${row.id}`}>{row.entry_count.toLocaleString('de-DE')} Einträge</RouterLink>
+        <RouterLink to={`/timeline?import=${row.id}`}>{row.entry_count.toLocaleString('en-GB')} {row.entry_count === 1 ? 'entry' : 'entries'}</RouterLink>
       </Link>
     </div>
   );

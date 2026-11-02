@@ -32,7 +32,7 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { EntryBadge } from '../components/IssueBadges';
 import { api } from '../lib/api';
 import { formatDateTime, processLabel } from '../lib/format';
-import { germanError } from '../lib/issueList';
+import { readableError } from '../lib/issueList';
 import type { EntriesResponse, ImportRow } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useResource } from '../lib/useResource';
@@ -45,7 +45,7 @@ const FILTER_KEYS = ['import', 'process', 'kind', 'level', 'q', 'from', 'to'] as
 
 // Filters live in the URL so a filtered view can be shared as a link
 export function TimelinePage() {
-  usePageTitle('Einträge');
+  usePageTitle('Entries');
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -77,7 +77,7 @@ export function TimelinePage() {
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={ALL}>{label}: alle</SelectItem>
+        <SelectItem value={ALL}>{label}: all</SelectItem>
         {options.map(([value, text]) => (
           <SelectItem key={value} value={value}>{text}</SelectItem>
         ))}
@@ -88,8 +88,8 @@ export function TimelinePage() {
   const filters = (
     <>
       {select('import', 'Import', (imports.data ?? []).map((row) => [String(row.id), row.filename]))}
-      {select('process', 'Prozess', [['app', 'App'], ['autofill', 'Autofill-Extension']])}
-      {select('kind', 'Art', [['app_log', 'App-Logs'], ['event', 'Measure-Ereignisse'], ['span', 'Messungen']])}
+      {select('process', 'Process', [['app', 'App'], ['autofill', 'Autofill extension']])}
+      {select('kind', 'Kind', [['app_log', 'App logs'], ['event', 'Measure events'], ['span', 'Spans']])}
       {select('level', 'Level', [['debug', 'debug'], ['info', 'info'], ['notice', 'notice'], ['warning', 'warning'], ['error', 'error'], ['fault', 'fault']])}
     </>
   );
@@ -99,7 +99,7 @@ export function TimelinePage() {
 
   return (
     <Stack gap="section">
-      <PageHeader title="Einträge" subtitle={windowed ? 'Alle Zeilen im gewählten Zeitraum, älteste zuerst.' : 'Alle Zeilen aus allen Importen, neueste zuerst: Logs, Bedienschritte, Netzwerk, Abstürze.'} />
+      <PageHeader title="Entries" subtitle={windowed ? 'All lines in the selected time range, oldest first.' : 'All lines from all imports, newest first: logs, user steps, network, crashes.'} />
       <ActionBar>
         <ActionBarRow className="flex-wrap">
           <form
@@ -110,7 +110,7 @@ export function TimelinePage() {
               update('q', search.trim());
             }}
           >
-            <Input ref={searchField} placeholder="Suchen" value={search} onChange={(event) => setSearch(event.target.value)} onBlur={() => update('q', search.trim())} aria-label="Suchen in Nachricht, Kategorie und Typ" />
+            <Input ref={searchField} placeholder="Search" value={search} onChange={(event) => setSearch(event.target.value)} onBlur={() => update('q', search.trim())} aria-label="Search in message, category and type" />
           </form>
           <div className="hidden flex-wrap gap-2 lg:flex">{filters}</div>
           <Button variant="outline" className="lg:hidden" onClick={() => setFiltersOpen(true)}>
@@ -125,12 +125,12 @@ export function TimelinePage() {
                 searchField.current?.focus();
               }}
             >
-              Zurücksetzen
+              Reset
             </Button>
           )}
           <span className="basis-full typography-small text-text-subtle sm:basis-auto" aria-live="polite">
-            {entries.data ? (total > shown ? `${total.toLocaleString('de-DE')} Einträge, ${windowed ? 'die ersten' : 'die neuesten'} ${shown} gezeigt` : `${total.toLocaleString('de-DE')} Einträge`) : ''}
-            {windowed ? `, ${formatDateTime(params.get('from'))} bis ${formatDateTime(params.get('to'))}` : ''}
+            {entries.data ? (total > shown ? `${total.toLocaleString('en-GB')} entries, ${windowed ? 'first' : 'newest'} ${shown} shown` : `${total.toLocaleString('en-GB')} ${total === 1 ? 'entry' : 'entries'}`) : ''}
+            {windowed ? `, ${formatDateTime(params.get('from'))} to ${formatDateTime(params.get('to'))}` : ''}
           </span>
         </ActionBarRow>
       </ActionBar>
@@ -150,15 +150,15 @@ export function TimelinePage() {
         <Table density="compact" stickyHeader maxHeight="75vh">
           <TableHeader>
             <TableRow>
-              <TableHead className="hidden w-44 sm:table-cell">Zeit</TableHead>
-              <TableHead className="hidden w-40 md:table-cell">Prozess</TableHead>
-              <TableHead className="hidden w-36 sm:table-cell">Typ</TableHead>
-              <TableHead>Inhalt</TableHead>
+              <TableHead className="hidden w-44 sm:table-cell">Time</TableHead>
+              <TableHead className="hidden w-40 md:table-cell">Process</TableHead>
+              <TableHead className="hidden w-36 sm:table-cell">Type</TableHead>
+              <TableHead>Content</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {entries.error && <TableError columns={COLUMNS} title="Einträge konnten nicht geladen werden" description={germanError(entries.error)} onRetry={entries.reload} retryLabel="Erneut versuchen" />}
-            {!entries.error && shown === 0 && <TableEmpty columns={COLUMNS} variant="no-results" title="Keine Einträge" description="Passe die Filter an oder importiere einen Export." />}
+            {entries.error && <TableError columns={COLUMNS} title="Entries could not be loaded" description={readableError(entries.error)} onRetry={entries.reload} retryLabel="Try again" />}
+            {!entries.error && shown === 0 && <TableEmpty columns={COLUMNS} variant="no-results" title="No entries" description="Adjust the filters or import an export." />}
             {entries.data?.items.map((entry) => (
               <TableRow
                 key={entry.id}

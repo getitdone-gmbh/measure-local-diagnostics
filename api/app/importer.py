@@ -135,7 +135,7 @@ def fingerprint(event: dict, app_build: str | None) -> tuple[str, str, str]:
     first = payload["details"][0] if payload["details"] else {}
     frames = symbolicate_frames(first.get("frames") or [], payload["images"])
     own = [frame for frame in frames if frame["in_app"] and not is_entry_point(frame)][:3]
-    label = first.get("type") or ("Hänger" if payload["kind"] == "hang" else "Absturz")
+    label = first.get("type") or ("Hang" if payload["kind"] == "hang" else "Crash")
     if own:
         keys = [_frame_key(frame) for frame in own]
         # Symbolicated function names are stable across builds, raw offsets only within one build
@@ -148,7 +148,7 @@ def fingerprint(event: dict, app_build: str | None) -> tuple[str, str, str]:
         version = [first.get("os_build_number") or ""]
         crashed_in = frames[0]["binary"] if frames else "unknown frame"
         caller = next((frame["binary"] for frame in frames[1:10] if frame["binary"] != crashed_in), None)
-        title = f"{label} in {crashed_in}" + (f" (aus {caller})" if caller else "")
+        title = f"{label} in {crashed_in}" + (f" (from {caller})" if caller else "")
     signature = "|".join([payload["kind"], first.get("type") or "", *keys, *version])
     return hashlib.sha256(signature.encode()).hexdigest(), payload["kind"], title
 

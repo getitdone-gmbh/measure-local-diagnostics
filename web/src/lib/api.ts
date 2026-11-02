@@ -29,7 +29,7 @@ export async function loadConfig(): Promise<RuntimeConfig> {
 
 // Returns the signed-in user name, redirects to the login realm when there is no session
 export async function ensureSignedIn(): Promise<string | null> {
-  if (!userManager) return 'lokal';
+  if (!userManager) return 'local';
   if (window.location.pathname === '/callback') {
     const user = await userManager.signinRedirectCallback();
     const target = typeof user.state === 'string' ? user.state : '/';

@@ -17,7 +17,7 @@ async function start() {
     if (!user) return;
     root.render(
       <StrictMode>
-        <DesignSystemProvider locale="de">
+        <DesignSystemProvider locale="en">
           <BrowserRouter>
             <App user={user} />
           </BrowserRouter>
@@ -26,9 +26,9 @@ async function start() {
     );
   } catch (error) {
     root.render(
-      <DesignSystemProvider locale="de">
+      <DesignSystemProvider locale="en">
         <main className="mx-auto max-w-xl p-8">
-          <DataStatePanel kind="error" title="Anmeldung fehlgeschlagen" description={(error as Error).message} onRetry={() => window.location.assign('/')} retryLabel="Neu laden" />
+          <DataStatePanel kind="error" title="Sign-in failed" description={(error as Error).message} onRetry={() => window.location.assign('/')} retryLabel="Reload" />
         </main>
       </DesignSystemProvider>,
     );

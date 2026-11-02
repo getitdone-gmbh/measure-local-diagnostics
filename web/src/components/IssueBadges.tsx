@@ -3,10 +3,10 @@ import { Badge } from '@getitdone-gmbh/kette-design-community';
 import type { IssueKind, IssueStatus, TimelineEntry } from '../lib/types';
 
 export const statusLabels: Record<IssueStatus, string> = {
-  open: 'Offen',
-  investigating: 'In Analyse',
-  resolved: 'Behoben',
-  ignored: 'Ignoriert',
+  open: 'Open',
+  investigating: 'Investigating',
+  resolved: 'Resolved',
+  ignored: 'Ignored',
 };
 
 // Status colours differ from the kind badges (crash red, hang yellow), so two badges never look alike
@@ -18,33 +18,33 @@ const statusVariants = {
 } as const;
 
 const eventLabels: Record<string, string> = {
-  exception: 'Absturz',
-  app_hang: 'Hänger',
-  gesture_click: 'Tippen',
-  gesture_long_click: 'Langes Tippen',
-  gesture_scroll: 'Scrollen',
+  exception: 'Crash',
+  app_hang: 'Hang',
+  gesture_click: 'Tap',
+  gesture_long_click: 'Long press',
+  gesture_scroll: 'Scroll',
   screen_view: 'Screen',
-  lifecycle_app: 'App-Status',
-  lifecycle_view_controller: 'View-Controller',
-  lifecycle_swift_ui: 'SwiftUI-View',
+  lifecycle_app: 'App state',
+  lifecycle_view_controller: 'View controller',
+  lifecycle_swift_ui: 'SwiftUI view',
   http: 'HTTP',
   cpu_usage: 'CPU',
-  memory_usage_absolute: 'Speicher',
-  cold_launch: 'Kaltstart',
-  warm_launch: 'Warmstart',
-  hot_launch: 'Start',
+  memory_usage_absolute: 'Memory',
+  cold_launch: 'Cold launch',
+  warm_launch: 'Warm launch',
+  hot_launch: 'Launch',
   bug_report: 'Export',
-  network_change: 'Netzwechsel',
-  span: 'Messung',
-  log: 'Measure-Log',
+  network_change: 'Network change',
+  span: 'Span',
+  log: 'Measure log',
 };
 
-export const eventLabel = (type: string | null | undefined) => (type ? eventLabels[type] ?? type : 'Ereignis');
+export const eventLabel = (type: string | null | undefined) => (type ? eventLabels[type] ?? type : 'Event');
 
 export function KindBadge({ kind }: { kind: IssueKind }) {
   return (
     <Badge variant={kind === 'crash' ? 'destructive' : 'warning'} tinted>
-      {kind === 'crash' ? 'Absturz' : 'Hänger'}
+      {kind === 'crash' ? 'Crash' : 'Hang'}
     </Badge>
   );
 }

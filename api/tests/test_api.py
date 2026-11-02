@@ -8,7 +8,7 @@ import pytest
 from app import db
 from app.main import purge_expired
 
-from .conftest import exception_event, make_export, sample_lines
+from .conftest import exception_event, frame, make_export, sample_lines
 
 
 def upload(client, payload: bytes, name: str = "export.zip"):
@@ -162,6 +162,15 @@ def test_crash_without_own_frames_is_titled_by_system_binary(client):
     event["exception"]["exceptions"][0]["frames"] = event["exception"]["exceptions"][0]["frames"][:1]
     upload(client, make_export([{"process": "app", "kind": "event", "data": event}]))
     assert client.get("/api/issues").json()[0]["title"] == "EXC_BAD_ACCESS in libsystem_kernel.dylib"
+
+
+def test_untyped_crash_title_names_kind_and_calling_binary(client):
+    event = exception_event("crash-untyped", "s3", "2026-10-27T09:00:00Z")
+    details = event["exception"]["exceptions"][0]
+    details.pop("type")
+    details["frames"] = [frame(0, "libsystem_kernel.dylib", 0x190000000, 0x20), frame(1, "libdispatch.dylib", 0x1a0000000, 0x40)]
+    upload(client, make_export([{"process": "app", "kind": "event", "data": event}]))
+    assert client.get("/api/issues").json()[0]["title"] == "Crash in libsystem_kernel.dylib (from libdispatch.dylib)"
 
 
 def test_crash_window_spans_last_activity_to_relaunch(client):
