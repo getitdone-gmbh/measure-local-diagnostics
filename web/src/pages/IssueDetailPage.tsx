@@ -6,10 +6,12 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Attribute,
-  Attributes,
   Badge,
   Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   DataStatePanel,
   HelpIcon,
   Label,
@@ -66,6 +68,7 @@ const LIBRARY_NAMES: Record<string, string> = { measure: 'Measure SDK', kscrash:
 export function IssueDetailPage() {
   const { issueId } = useParams();
   const [params, setParams] = useSearchParams();
+  const [editingNote, setEditingNote] = useState(false);
   const issue = useResource(() => api<IssueDetail>(`/api/issues/${issueId}`), [issueId]);
   const occurrenceParam = Number(params.get('occurrence')) || null;
   const occurrenceId = occurrenceParam ?? issue.data?.occurrences[0]?.id ?? null;
@@ -108,9 +111,18 @@ export function IssueDetailPage() {
           </Link>
         }
         badges={<KindBadge kind={issue.data.kind} />}
-        actions={<IssueStatusSelect issue={issue.data} onSaved={issue.reload} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {!issue.data.note && !editingNote && (
+              <Button size="sm" variant="ghost" onClick={() => setEditingNote(true)}>
+                Notiz hinzufügen
+              </Button>
+            )}
+            <IssueStatusSelect issue={issue.data} onSaved={issue.reload} />
+          </div>
+        }
       />
-      <IssueNote issue={issue.data} />
+      <IssueNote issue={issue.data} editing={editingNote} onEditingChange={setEditingNote} onSaved={issue.reload} />
       {issue.data.occurrences.length > 1 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Label htmlFor="occurrence">Vorkommen ({issue.data.occurrences.length})</Label>
@@ -174,39 +186,68 @@ function IssueStatusSelect({ issue, onSaved }: { issue: IssueDetail; onSaved: ()
   );
 }
 
-// Saved when the field loses focus, so leaving the page never drops the text silently
-function IssueNote({ issue }: { issue: IssueDetail }) {
-  const [note, setNote] = useState(issue.note);
-  const [saved, setSaved] = useState(issue.note);
-  const [state, setState] = useState<'idle' | 'saving' | 'error'>('idle');
+// Hidden until a note exists or the user starts one from the header
+function IssueNote({ issue, editing, onEditingChange, onSaved }: { issue: IssueDetail; editing: boolean; onEditingChange: (editing: boolean) => void; onSaved: () => void }) {
+  const [draft, setDraft] = useState(issue.note);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (editing) setDraft(issue.note);
+  }, [editing, issue.note]);
 
   async function save() {
-    if (note === saved) return;
-    setState('saving');
+    if (draft === issue.note) {
+      onEditingChange(false);
+      return;
+    }
+    setSaving(true);
     try {
-      await api(`/api/issues/${issue.id}`, { method: 'PATCH', body: JSON.stringify({ note }) });
-      setSaved(note);
-      setState('idle');
+      await api(`/api/issues/${issue.id}`, { method: 'PATCH', body: JSON.stringify({ note: draft }) });
+      onEditingChange(false);
+      toast({ title: draft ? 'Notiz gespeichert' : 'Notiz entfernt' });
+      onSaved();
     } catch (reason) {
-      setState('error');
       toast({ variant: 'destructive', title: 'Notiz nicht gespeichert', description: `${(reason as Error).message}. Der Text bleibt im Feld, bitte erneut versuchen.` });
+    } finally {
+      setSaving(false);
     }
   }
 
-  const hint = state === 'saving' ? 'Wird gespeichert …' : state === 'error' ? 'Nicht gespeichert' : note !== saved ? 'Wird beim Verlassen des Felds gespeichert' : saved ? 'Gespeichert' : '';
-  return (
-    <Stack gap="block">
-      <Label htmlFor="issue-note">Notiz, z. B. Ticket, Ursache oder Fix</Label>
-      <Textarea id="issue-note" value={note} onChange={(event) => setNote(event.target.value)} onBlur={save} rows={2} />
-      <div className="flex items-center gap-3">
-        <span className="typography-small text-text-subtle" aria-live="polite">{hint}</span>
-        {state === 'error' && (
-          <Button variant="secondary" size="sm" onClick={save}>
-            Erneut speichern
+  if (editing) {
+    return (
+      <Stack gap="block">
+        <Label htmlFor="issue-note">Notiz, z. B. Ticket, Ursache oder Fix</Label>
+        <Textarea
+          id="issue-note"
+          value={draft}
+          rows={2}
+          autoFocus
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') onEditingChange(false);
+            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) save();
+          }}
+        />
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={save} disabled={saving}>
+            {saving ? 'Wird gespeichert …' : 'Speichern'}
           </Button>
-        )}
-      </div>
-    </Stack>
+          <Button size="sm" variant="ghost" onClick={() => onEditingChange(false)} disabled={saving}>
+            Abbrechen
+          </Button>
+        </div>
+      </Stack>
+    );
+  }
+
+  if (!issue.note) return null;
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <span className="typography-small text-text-subtle">Notiz</span>
+      <span className="min-w-0 whitespace-pre-wrap break-words">{issue.note}</span>
+      <Button size="sm" variant="link" onClick={() => onEditingChange(true)}>
+        Bearbeiten
+      </Button>
+    </div>
   );
 }
 
@@ -231,10 +272,9 @@ function OccurrenceView({ occurrenceId, title, tab, onTabChange }: { occurrenceI
 
   return (
     <Stack gap="section">
-      <Stack gap="block">
-        <PanelSectionHeader
-          title="Kontext"
-          titleAs="h2"
+      <Card density="compact">
+        <CardHeader
+          divider
           actions={
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
@@ -243,9 +283,13 @@ function OccurrenceView({ occurrenceId, title, tab, onTabChange }: { occurrenceI
               <Button variant="outline" size="sm" onClick={copyMarkdown}>Als Markdown kopieren</Button>
             </div>
           }
-        />
-        <ContextAttributes occurrence={data} />
-      </Stack>
+        >
+          <CardTitle titleAs="h2">Kontext</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <ContextAttributes occurrence={data} />
+        </CardContent>
+      </Card>
       {missing.length > 0 && (
         <Alert variant="warning">
           <AlertTitle>Eigene Frames nur teilweise lesbar</AlertTitle>
@@ -310,23 +354,28 @@ function ContextAttributes({ occurrence }: { occurrence: Occurrence }) {
     .filter(Boolean)
     .join(', ');
   return (
-    <Attributes>
-      <Attribute label={occurrence.window.exact ? 'Zeitpunkt' : 'Absturz'}><ContextValue>{crashTimeLabel(occurrence)}</ContextValue></Attribute>
-      {!occurrence.window.exact && <Attribute label="Gespeichert beim Neustart"><ContextValue>{formatDateTime(occurrence.window.before)}</ContextValue></Attribute>}
-      {occurrence.duration_ms ? <Attribute label="Dauer des Hängers"><ContextValue>{`${occurrence.duration_ms.toLocaleString('de-DE')} ms`}</ContextValue></Attribute> : null}
-      <Attribute label="Prozess"><ContextValue>{processLabel(occurrence.process)}</ContextValue></Attribute>
-      <Attribute label="App"><ContextValue>{`${context.app_version ?? '?'} (${context.app_build ?? '?'})`}</ContextValue></Attribute>
-      <Attribute label="Gerät"><ContextValue>{`${context.device_model ?? '?'}, iOS ${context.os_version ?? '?'}`}</ContextValue></Attribute>
-      <Attribute label="Netz"><ContextValue>{network || 'unbekannt'}</ContextValue></Attribute>
-      <Attribute label="Energiesparmodus"><ContextValue>{context.device_low_power_mode ? 'an' : 'aus'}</ContextValue></Attribute>
-      <Attribute label="Import"><ContextValue>{String(context.import ?? 'unbekannt')}</ContextValue></Attribute>
-    </Attributes>
+    <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+      <ContextItem label={occurrence.window.exact ? 'Zeitpunkt' : 'Absturz'} wide>{crashTimeLabel(occurrence)}</ContextItem>
+      {!occurrence.window.exact && <ContextItem label="Gespeichert beim Neustart">{formatDateTime(occurrence.window.before)}</ContextItem>}
+      {occurrence.duration_ms ? <ContextItem label="Dauer des Hängers">{`${occurrence.duration_ms.toLocaleString('de-DE')} ms`}</ContextItem> : null}
+      <ContextItem label="Prozess">{processLabel(occurrence.process)}</ContextItem>
+      <ContextItem label="App">{`${context.app_version ?? '?'} (${context.app_build ?? '?'})`}</ContextItem>
+      <ContextItem label="Gerät">{`${context.device_model ?? '?'}, iOS ${context.os_version ?? '?'}`}</ContextItem>
+      <ContextItem label="Netz">{network || 'unbekannt'}</ContextItem>
+      <ContextItem label="Energiesparmodus">{context.device_low_power_mode ? 'an' : 'aus'}</ContextItem>
+      <ContextItem label="Import" wide>{String(context.import ?? 'unbekannt')}</ContextItem>
+    </dl>
   );
 }
 
-// Values one step above the label size, so label and value read as a pair
-function ContextValue({ children }: { children: ReactNode }) {
-  return <span className="typography-p-ui text-foreground">{children}</span>;
+// Label above value, so the facts fit a compact grid instead of one long list
+function ContextItem({ label, wide, children }: { label: string; wide?: boolean; children: ReactNode }) {
+  return (
+    <div className={wide ? 'col-span-2 min-w-0' : 'min-w-0'}>
+      <dt className="typography-small text-text-subtle">{label}</dt>
+      <dd className="typography-p-ui text-foreground break-words">{children}</dd>
+    </div>
+  );
 }
 
 type FrameRow = { frame: Frame; position: number } | { collapsed: Frame[]; binary: string; key: string };
