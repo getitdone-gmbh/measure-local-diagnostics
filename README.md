@@ -4,8 +4,6 @@ Import und Auswertung von Diagnose-Exporten, die eine App lokal mit dem [Measure
 
 Gedacht für Apps, die keine Diagnosedaten an einen Server schicken dürfen. Die App fängt die Uploads von Measure auf dem Gerät ab, schreibt sie in JSONL-Dateien und gibt sie nur über einen Export frei, den die Nutzerin oder der Nutzer selbst anstößt. Dieses Werkzeug liest solche Exporte ein und macht sie auswertbar. Unterstützt werden derzeit iOS-Exporte, Android ist geplant.
 
-![Liste der Abstürze und Hänger](docs/screenshots/issues.png)
-
 ## Funktionen
 
 - **Import** von Exporten per Drag & Drop. Doppelte Exporte und überlappende Einträge werden erkannt.
@@ -13,19 +11,63 @@ Gedacht für Apps, die keine Diagnosedaten an einen Server schicken dürfen. Die
 - **Vorkommen**:
   - Kontext: Gerät, OS, App-Version, Netz, Prozess (App oder Extension).
   - Absturz-Thread mit eigenen Frames, Bibliotheken und System-Frames getrennt markiert, dazu alle weiteren Threads.
-  - Verlauf der Session vor dem Fehler: Taps, View-Controller, HTTP, Logs, CPU, Speicher, Lücken ohne Aktivität.
+  - Einträge der Session vor dem Fehler: Taps, View-Controller, HTTP, Logs, CPU, Speicher, Lücken ohne Aktivität.
   - Export als Markdown für Tickets.
 - **Symbolisierung**: dSYM-ZIP hochladen. Gespeichert wird nur die kompakte SymCache, Swift-Namen werden lesbar gemacht.
-- **Timeline-Suche** über alle Einträge, die Filter stehen in der URL.
+- **Einträge**: Suche und Filter über alle Zeilen aller Importe, die Filter stehen in der URL.
 - **Löschfrist**: Importe werden nach `RETENTION_DAYS` (Standard 90) automatisch gelöscht.
 
-| Absturz mit Stack | Verlauf vor dem Absturz |
-|---|---|
-| ![Issue mit Stacktrace](docs/screenshots/issue-detail.png) | ![Session-Verlauf](docs/screenshots/session-timeline.png) |
+## So liest du einen Absturz
 
-![Importe](docs/screenshots/imports.png)
+Die Screenshots zeigen Demodaten einer kleinen Notizen-App mit hochgeladenen dSYMs.
 
-Die Screenshots zeigen Demodaten aus absichtlich eingebauten Fehlern, ohne hochgeladene dSYMs.
+### 1. Export importieren
+
+<img src="docs/screenshots/1-imports.png" alt="Seite Importe mit Upload-Feld und einer Importzeile" width="800">
+
+1. Export-ZIP aus der App hierher ziehen. Jeder Export wird nur einmal übernommen, überlappende Exporte desselben Geräts ergänzen sich.
+2. Jede Zeile zeigt, was der Export gebracht hat: die Issues und alle Einträge dieses Imports, beides direkt verlinkt.
+
+### 2. Issue auswählen
+
+<img src="docs/screenshots/2-issues.png" alt="Liste der Issues mit Filtern" width="800">
+
+1. Weitere Exporte kommen über die Importe-Seite dazu.
+2. Filter nach Status und Import. Nach einem Upload zeigt die Liste alle Status des neuen Exports, damit ein wieder aufgetretener Fehler nicht versteckt bleibt.
+3. Gleiche Fehler sind zu einem Issue zusammengefasst, benannt nach Fehlerart und oberstem eigenen Frame.
+4. Wie oft der Fehler vorkam, über alle Importe.
+
+### 3. Überblick über das Issue
+
+<img src="docs/screenshots/3-issue-head.png" alt="Kopf der Issue-Seite mit Titel, Aktionen, Reitern und Kennzahlen" width="800">
+
+1. Vor und zurück durch die Liste, mit dem Filter von dort.
+2. Die Stelle als Überschrift, darunter Fehlerart, Grund, Prozess, Version, Gerät und Zeit.
+3. Status setzen, die Einträge rund um den Absturz öffnen, das Vorkommen als Markdown für ein Ticket kopieren.
+4. Stacktrace, alle Threads, die Einträge der Session, alle Vorkommen und die Binaries, jeweils mit Anzahl.
+5. Kennzahlen über alle Vorkommen.
+
+### 4. Stack und Kontext
+
+<img src="docs/screenshots/4-issue-body.png" alt="Stacktrace mit markierter Absturzstelle und Kontext-Spalte" width="800">
+
+1. Zwischen allen Frames und nur eigenem Code umschalten.
+2. Die Absturzstelle ist hinterlegt. System-Frames von iOS bleiben Adressen, dafür fehlen die Symbole von Apple.
+3. Längere Folgen von System-Frames sind eingeklappt.
+4. Eigener Code mit Funktion, Datei und Zeile, sobald die dSYMs des Builds hochgeladen sind.
+5. Kontext des gewählten Vorkommens: Zeitraum des Absturzes, Prozess, Version, Gerät, Netz und der Import, aus dem es stammt.
+6. Notiz zum Issue, zum Beispiel Ticket oder Ursache. Sie wird mit Enter oder beim Verlassen des Felds gespeichert.
+
+### 5. Was davor passiert ist
+
+<img src="docs/screenshots/5-entries.png" alt="Einträge der Session bis zum Absturz" width="800">
+
+1. Nach Bedienschritten, App-Logs oder Netzwerk filtern.
+2. Jede Zeile mit Abstand zum Absturz, Uhrzeit, Prozess und Art, hier der letzte Tipp vor dem Absturz.
+3. Ein Absturz wird erst beim nächsten Start gespeichert. Die Lücke bis dahin ist als Neustart markiert, nicht als Hänger.
+4. Der Absturz selbst, mit Grund.
+
+Auf dem Handy liegen Kontext und Kennzahlen hinter dem Knopf „Details“.
 
 ## Exportformat
 
