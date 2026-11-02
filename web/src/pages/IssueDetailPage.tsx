@@ -276,9 +276,19 @@ export function IssueDetailPage() {
         </div>
 
         <Sheet open={detailsOpen && !wide} onOpenChange={setDetailsOpen}>
-          <SheetContent side="right" size="sm" onOpenAutoFocus={(event) => event.preventDefault()}>
+          <SheetContent
+            side="right"
+            size="sm"
+            onOpenAutoFocus={(event) => {
+              // Focus the title instead of the note field, so phones keep the keyboard closed and screen readers announce the sheet
+              event.preventDefault();
+              document.getElementById('details-title')?.focus();
+            }}
+          >
             <SheetHeader>
-              <SheetTitle>Details</SheetTitle>
+              <SheetTitle id="details-title" tabIndex={-1}>
+                Details
+              </SheetTitle>
             </SheetHeader>
             <SheetBody>
               <Stack gap="block">
@@ -709,7 +719,7 @@ function TimelineTab({ entries, occurrence }: { entries: TimelineEntry[]; occurr
     <Stack gap="block">
       <ActionBar>
         <ActionBarRow>
-          <div className="max-w-full overflow-x-auto">
+          <div className="max-w-full overflow-x-auto max-sm:[mask-image:linear-gradient(to_right,black_80%,transparent)]">
             <ToggleGroup type="single" variant="segmented" value={filter} onValueChange={(next) => next && setFilter(next as TimelineFilter)} aria-label="Einträge filtern">
               {(Object.keys(timelineFilters) as TimelineFilter[]).map((key) => (
                 <ToggleGroupItem key={key} value={key} className="whitespace-nowrap">

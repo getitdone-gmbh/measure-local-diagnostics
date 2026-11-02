@@ -1,4 +1,6 @@
 import {
+  ActionBar,
+  ActionBarRow,
   Button,
   Input,
   Link,
@@ -8,6 +10,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   Stack,
   Table,
   TableBody,
@@ -41,6 +48,7 @@ export function TimelinePage() {
   usePageTitle('Einträge');
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get('q') ?? '');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const imports = useResource(() => api<ImportRow[]>('/api/imports'), []);
   const entries = useResource(() => {
     const query = new URLSearchParams({ limit: String(LIMIT) });
@@ -64,7 +72,7 @@ export function TimelinePage() {
 
   const select = (key: string, label: string, options: [string, string][]) => (
     <Select value={params.get(key) ?? ALL} onValueChange={(value) => update(key, value)}>
-      <SelectTrigger className="w-full" aria-label={label}>
+      <SelectTrigger className="w-full lg:w-44" aria-label={label}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -76,37 +84,58 @@ export function TimelinePage() {
     </Select>
   );
 
+  const filters = (
+    <>
+      {select('import', 'Import', (imports.data ?? []).map((row) => [String(row.id), row.filename]))}
+      {select('process', 'Prozess', [['app', 'App'], ['autofill', 'Autofill-Extension']])}
+      {select('kind', 'Art', [['app_log', 'App-Logs'], ['event', 'Measure-Ereignisse'], ['span', 'Messungen']])}
+      {select('level', 'Level', [['debug', 'debug'], ['info', 'info'], ['notice', 'notice'], ['warning', 'warning'], ['error', 'error'], ['fault', 'fault']])}
+    </>
+  );
+  const activeFilters = (['import', 'process', 'kind', 'level'] as const).filter((key) => params.get(key)).length;
   const total = entries.data?.total ?? 0;
   const shown = entries.data?.items.length ?? 0;
 
   return (
     <Stack gap="section">
       <PageHeader title="Einträge" subtitle={windowed ? 'Alle Zeilen im gewählten Zeitraum, älteste zuerst.' : 'Alle Zeilen aus allen Importen, neueste zuerst: Logs, Bedienschritte, Netzwerk, Abstürze.'} />
-      <form
-        className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5"
-        role="search"
-        onSubmit={(event) => {
-          event.preventDefault();
-          update('q', search.trim());
-        }}
-      >
-        <Input placeholder="Suchen, mit Enter bestätigen" value={search} onChange={(event) => setSearch(event.target.value)} onBlur={() => update('q', search.trim())} aria-label="Suchen in Nachricht, Kategorie und Typ" />
-        {select('import', 'Import', (imports.data ?? []).map((row) => [String(row.id), row.filename]))}
-        {select('process', 'Prozess', [['app', 'App'], ['autofill', 'Autofill-Extension']])}
-        {select('kind', 'Art', [['app_log', 'App-Logs'], ['event', 'Measure-Ereignisse'], ['span', 'Messungen']])}
-        {select('level', 'Level', [['debug', 'debug'], ['info', 'info'], ['notice', 'notice'], ['warning', 'warning'], ['error', 'error'], ['fault', 'fault']])}
-      </form>
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="typography-small text-text-subtle" aria-live="polite">
-          {entries.data ? (total > shown ? `${total.toLocaleString('de-DE')} Einträge, ${windowed ? 'die ersten' : 'die neuesten'} ${shown} werden gezeigt` : `${total.toLocaleString('de-DE')} Einträge`) : ''}
-          {params.get('from') && params.get('to') ? `, Zeitraum ${formatDateTime(params.get('from'))} bis ${formatDateTime(params.get('to'))}` : ''}
-        </span>
-        {hasFilter && (
-          <Button variant="ghost" size="sm" onClick={() => setParams({}, { replace: true })}>
-            Filter zurücksetzen
+      <ActionBar>
+        <ActionBarRow className="flex-wrap">
+          <form
+            className="min-w-0 basis-full sm:basis-auto sm:flex-1 sm:max-w-xs"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              update('q', search.trim());
+            }}
+          >
+            <Input placeholder="Suchen" value={search} onChange={(event) => setSearch(event.target.value)} onBlur={() => update('q', search.trim())} aria-label="Suchen in Nachricht, Kategorie und Typ" />
+          </form>
+          <div className="hidden flex-wrap gap-2 lg:flex">{filters}</div>
+          <Button variant="outline" className="lg:hidden" onClick={() => setFiltersOpen(true)}>
+            Filter{activeFilters ? ` (${activeFilters})` : ''}
           </Button>
-        )}
-      </div>
+          {hasFilter && (
+            <Button variant="ghost" onClick={() => setParams({}, { replace: true })}>
+              Zurücksetzen
+            </Button>
+          )}
+          <span className="basis-full typography-small text-text-subtle sm:basis-auto" aria-live="polite">
+            {entries.data ? (total > shown ? `${total.toLocaleString('de-DE')} Einträge, ${windowed ? 'die ersten' : 'die neuesten'} ${shown} gezeigt` : `${total.toLocaleString('de-DE')} Einträge`) : ''}
+            {windowed ? `, ${formatDateTime(params.get('from'))} bis ${formatDateTime(params.get('to'))}` : ''}
+          </span>
+        </ActionBarRow>
+      </ActionBar>
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>Filter</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
+            <Stack gap="block">{filters}</Stack>
+          </SheetBody>
+        </SheetContent>
+      </Sheet>
       {entries.loading && !entries.data ? (
         <TableLoading columns={COLUMNS} rows={8} />
       ) : (
