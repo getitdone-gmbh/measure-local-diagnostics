@@ -237,6 +237,7 @@ def list_entries(
     since: datetime | None = Query(None, alias="from"),
     until: datetime | None = Query(None, alias="to"),
     limit: int = Query(500, le=5000),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
     _: str = Depends(current_user),
 ) -> dict:
     clauses, params = [], []
@@ -258,7 +259,7 @@ def list_entries(
     items = db.fetch_all(
         f"""SELECT e.id, e.import_id, e.ts, e.process, e.kind, e.event_type, e.session_id, e.level, e.category, e.message,
                    (SELECT issue_id FROM occurrences o WHERE o.entry_id = e.id LIMIT 1) AS issue_id
-            FROM entries e {where} ORDER BY ts DESC LIMIT %s""",
+            FROM entries e {where} ORDER BY ts {'ASC' if order == 'asc' else 'DESC'} LIMIT %s""",
         (*params, limit),
     )
     return {"total": total, "items": items}

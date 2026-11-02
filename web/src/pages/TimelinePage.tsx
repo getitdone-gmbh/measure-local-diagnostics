@@ -25,6 +25,7 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { EntryBadge } from '../components/IssueBadges';
 import { api } from '../lib/api';
 import { formatDateTime, processLabel } from '../lib/format';
+import { germanError } from '../lib/issueList';
 import type { EntriesResponse, ImportRow } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useResource } from '../lib/useResource';
@@ -33,6 +34,7 @@ const ALL = 'all';
 const COLUMNS = 4;
 const LIMIT = 500;
 const FILTER_KEYS = ['import', 'process', 'kind', 'level', 'q', 'from', 'to'] as const;
+// A time window is read like a story, oldest first; the open list shows the newest first
 
 // Filters live in the URL so a filtered view can be shared as a link
 export function TimelinePage() {
@@ -44,9 +46,12 @@ export function TimelinePage() {
     const query = new URLSearchParams({ limit: String(LIMIT) });
     const mapping: Record<string, string> = { import: 'import_id' };
     FILTER_KEYS.forEach((key) => params.get(key) && query.set(mapping[key] ?? key, params.get(key)!));
+    if (params.get('from') && params.get('to')) query.set('order', 'asc');
     return api<EntriesResponse>(`/api/entries?${query}`);
   }, [params.toString()]);
   const hasFilter = FILTER_KEYS.some((key) => params.get(key));
+  const highlighted = Number(params.get('entry')) || null;
+  const windowed = Boolean(params.get('from') && params.get('to'));
 
   useEffect(() => setSearch(params.get('q') ?? ''), [params]);
 
@@ -76,7 +81,7 @@ export function TimelinePage() {
 
   return (
     <Stack gap="section">
-      <PageHeader title="Einträge" subtitle="Alle Zeilen aus allen Importen, neueste zuerst: Logs, Bedienschritte, Netzwerk, Abstürze." />
+      <PageHeader title="Einträge" subtitle={windowed ? 'Alle Zeilen im gewählten Zeitraum, älteste zuerst.' : 'Alle Zeilen aus allen Importen, neueste zuerst: Logs, Bedienschritte, Netzwerk, Abstürze.'} />
       <form
         className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5"
         role="search"
@@ -92,8 +97,8 @@ export function TimelinePage() {
         {select('level', 'Level', [['debug', 'debug'], ['info', 'info'], ['notice', 'notice'], ['warning', 'warning'], ['error', 'error'], ['fault', 'fault']])}
       </form>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-text-subtle" aria-live="polite">
-          {entries.data ? (total > shown ? `${total.toLocaleString('de-DE')} Einträge, die neuesten ${shown} werden gezeigt` : `${total.toLocaleString('de-DE')} Einträge`) : ''}
+        <span className="typography-small text-text-subtle" aria-live="polite">
+          {entries.data ? (total > shown ? `${total.toLocaleString('de-DE')} Einträge, ${windowed ? 'die ersten' : 'die neuesten'} ${shown} werden gezeigt` : `${total.toLocaleString('de-DE')} Einträge`) : ''}
           {params.get('from') && params.get('to') ? `, Zeitraum ${formatDateTime(params.get('from'))} bis ${formatDateTime(params.get('to'))}` : ''}
         </span>
         {hasFilter && (
@@ -108,23 +113,32 @@ export function TimelinePage() {
         <Table density="compact" stickyHeader maxHeight="75vh">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-44">Zeit</TableHead>
+              <TableHead className="hidden w-44 sm:table-cell">Zeit</TableHead>
               <TableHead className="hidden w-40 md:table-cell">Prozess</TableHead>
-              <TableHead className="w-36">Typ</TableHead>
+              <TableHead className="hidden w-36 sm:table-cell">Typ</TableHead>
               <TableHead>Inhalt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {entries.error && <TableError columns={COLUMNS} title="Einträge konnten nicht geladen werden" description={entries.error} onRetry={entries.reload} retryLabel="Erneut versuchen" />}
+            {entries.error && <TableError columns={COLUMNS} title="Einträge konnten nicht geladen werden" description={germanError(entries.error)} onRetry={entries.reload} retryLabel="Erneut versuchen" />}
             {!entries.error && shown === 0 && <TableEmpty columns={COLUMNS} variant="no-results" title="Keine Einträge" description="Passe die Filter an oder importiere einen Export." />}
             {entries.data?.items.map((entry) => (
-              <TableRow key={entry.id}>
-                <TableCell className="tabular-nums">{formatDateTime(entry.ts)}</TableCell>
+              <TableRow
+                key={entry.id}
+                className={entry.id === highlighted ? 'bg-table-background-selected' : undefined}
+                data-state={entry.id === highlighted ? 'selected' : undefined}
+                aria-current={entry.id === highlighted ? 'true' : undefined}
+              >
+                <TableCell className="hidden tabular-nums sm:table-cell">{formatDateTime(entry.ts)}</TableCell>
                 <TableCell className="hidden md:table-cell">{processLabel(entry.process)}</TableCell>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   <EntryBadge entry={entry} />
                 </TableCell>
-                <TableCell className="break-words">
+                <TableCell className="[overflow-wrap:anywhere]">
+                  <div className="mb-1 flex flex-wrap items-center gap-2 sm:hidden">
+                    <span className="tabular-nums text-text-subtle">{formatDateTime(entry.ts)}</span>
+                    <EntryBadge entry={entry} />
+                  </div>
                   {entry.kind === 'app_log' && entry.category ? <span className="text-text-subtle">{entry.category}: </span> : null}
                   {entry.issue_id ? (
                     <Link asChild underline="always" color="neutral">

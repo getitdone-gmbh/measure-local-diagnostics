@@ -26,6 +26,7 @@ import { api, upload } from '../lib/api';
 import { formatBytes, formatDateMinutes, formatDateTime } from '../lib/format';
 import type { BuildRow, IssueRef, SymbolsOverview } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
+import { germanError } from '../lib/issueList';
 import { useResource } from '../lib/useResource';
 
 const WATCHER_COMMAND = 'tools/install-archive-watcher.sh';
@@ -135,7 +136,7 @@ export function SymbolsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {builds.error && <TableError columns={3} title="Builds konnten nicht geladen werden" description={builds.error} onRetry={builds.reload} retryLabel="Erneut versuchen" />}
+              {builds.error && <TableError columns={3} title="Builds konnten nicht geladen werden" description={germanError(builds.error)} onRetry={builds.reload} retryLabel="Erneut versuchen" />}
               {!builds.error && builds.data?.length === 0 && (
                 <TableEmpty columns={3} variant="first-use" title="Noch keine Builds" description="Richte mit dem Befehl oben das automatische Hochladen ein oder lade unten eine dSYM-ZIP hoch." />
               )}
@@ -169,7 +170,7 @@ export function SymbolsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {symbols.error && <TableError columns={3} title="Symbole konnten nicht geladen werden" description={symbols.error} onRetry={symbols.reload} retryLabel="Erneut versuchen" />}
+              {symbols.error && <TableError columns={3} title="Symbole konnten nicht geladen werden" description={germanError(symbols.error)} onRetry={symbols.reload} retryLabel="Erneut versuchen" />}
               {!symbols.error && symbols.data?.missing.length === 0 && <TableEmpty columns={3} title="Nichts fehlt" description="Alle eigenen Binaries aus importierten Abstürzen und Hängern sind lesbar." />}
               {symbols.data?.missing.map((image) => (
                 <TableRow key={image.uuid}>

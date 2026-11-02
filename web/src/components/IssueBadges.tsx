@@ -9,9 +9,10 @@ export const statusLabels: Record<IssueStatus, string> = {
   ignored: 'Ignoriert',
 };
 
+// Status colours differ from the kind badges (crash red, hang yellow), so two badges never look alike
 const statusVariants = {
-  open: 'destructive',
-  investigating: 'warning',
+  open: 'info',
+  investigating: 'outline',
   resolved: 'success',
   ignored: 'secondary',
 } as const;

@@ -17,21 +17,27 @@ import {
   TableRow,
   toast,
 } from '@getitdone-gmbh/kette-design-community';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { ExportUpload } from '../components/ExportUpload';
 import { api } from '../lib/api';
 import { formatDateTime } from '../lib/format';
+import { germanError } from '../lib/issueList';
 import type { ImportRow } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useResource } from '../lib/useResource';
 
-const COLUMNS = 8;
+const COLUMNS = 7;
 
 export function ImportsPage() {
   usePageTitle('Importe');
   const { hash } = useLocation();
+  const navigate = useNavigate();
   const imports = useResource(() => api<ImportRow[]>('/api/imports'), []);
+  useEffect(() => {
+    if (hash && imports.data) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'center' });
+  }, [hash, imports.data]);
 
   async function remove(row: ImportRow) {
     try {
@@ -39,7 +45,7 @@ export function ImportsPage() {
       toast({ title: 'Import gelöscht', description: row.filename });
       imports.reload();
     } catch (reason) {
-      toast({ variant: 'destructive', title: 'Import nicht gelöscht', description: `${(reason as Error).message}. Bitte erneut versuchen.` });
+      toast({ variant: 'destructive', title: 'Import nicht gelöscht', description: `${germanError((reason as Error).message)} Bitte erneut versuchen.` });
     }
   }
 
@@ -57,7 +63,12 @@ export function ImportsPage() {
           </span>
         }
       />
-      <ExportUpload onImported={() => imports.reload()} />
+      <ExportUpload
+        onImported={(ids) => {
+          imports.reload();
+          if (ids.length === 1) navigate(`/imports#import-${ids[0]}`, { replace: true });
+        }}
+      />
       {imports.loading && !imports.data ? (
         <TableLoading columns={COLUMNS} rows={3} />
       ) : (
@@ -68,14 +79,13 @@ export function ImportsPage() {
               <TableHead className="hidden md:table-cell">Gerät</TableHead>
               <TableHead className="hidden md:table-cell">App</TableHead>
               <TableHead className="hidden lg:table-cell">Exportiert</TableHead>
-              <TableHead className="hidden sm:table-cell">Inhalt</TableHead>
               <TableHead className="hidden lg:table-cell">Vollständig</TableHead>
               <TableHead className="hidden lg:table-cell">Wird gelöscht am</TableHead>
               <TableHead><span className="sr-only">Aktionen</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {imports.error && <TableError columns={COLUMNS} title="Importe konnten nicht geladen werden" description={imports.error} onRetry={imports.reload} retryLabel="Erneut versuchen" />}
+            {imports.error && <TableError columns={COLUMNS} title="Importe konnten nicht geladen werden" description={germanError(imports.error)} onRetry={imports.reload} retryLabel="Erneut versuchen" />}
             {!imports.error && imports.data?.length === 0 && (
               <TableEmpty columns={COLUMNS} variant="first-use" title="Noch keine Importe" description="Ziehe einen Diagnose-Export in das Feld oben." />
             )}
@@ -87,19 +97,11 @@ export function ImportsPage() {
                   </Link>
                   <div className="text-text-subtle">von {row.uploaded_by}, {formatDateTime(row.uploaded_at)}</div>
                   <div className="text-text-subtle md:hidden">{row.device_model}, App {row.app_version} ({row.app_build})</div>
+                  <ImportContent row={row} />
                 </TableCell>
                 <TableCell className="hidden md:table-cell">{row.device_model}, iOS {row.os_version}</TableCell>
                 <TableCell className="hidden md:table-cell">{row.app_version} ({row.app_build})</TableCell>
                 <TableCell className="hidden whitespace-nowrap lg:table-cell">{formatDateTime(row.exported_at)}</TableCell>
-                <TableCell className="hidden whitespace-nowrap sm:table-cell">
-                  <Link asChild underline="hover">
-                    <RouterLink to={`/?status=all&import=${row.id}`}>{row.issue_count} {row.issue_count === 1 ? 'Issue' : 'Issues'}</RouterLink>
-                  </Link>
-                  <span className="text-text-subtle"> · </span>
-                  <Link asChild underline="hover">
-                    <RouterLink to={`/timeline?import=${row.id}`}>{row.entry_count.toLocaleString('de-DE')} Einträge</RouterLink>
-                  </Link>
-                </TableCell>
                 <TableCell className="hidden lg:table-cell">
                   {row.flush_complete === false ? (
                     <span title="Die App konnte die letzten Measure-Ereignisse vor dem Export nicht mehr übergeben.">
@@ -127,5 +129,20 @@ export function ImportsPage() {
         </Table>
       )}
     </Stack>
+  );
+}
+
+// What one export brought in, each count leads to exactly that part
+function ImportContent({ row }: { row: ImportRow }) {
+  return (
+    <div>
+      <Link asChild underline="hover">
+        <RouterLink to={`/?status=all&import=${row.id}`}>{row.issue_count} {row.issue_count === 1 ? 'Issue' : 'Issues'}</RouterLink>
+      </Link>
+      <span className="text-text-subtle"> · </span>
+      <Link asChild underline="hover">
+        <RouterLink to={`/timeline?import=${row.id}`}>{row.entry_count.toLocaleString('de-DE')} Einträge</RouterLink>
+      </Link>
+    </div>
   );
 }

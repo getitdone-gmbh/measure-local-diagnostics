@@ -1,4 +1,7 @@
 import {
+  ActionBar,
+  ActionBarRow,
+  Button,
   Link,
   PageHeader,
   Select,
@@ -23,7 +26,7 @@ import { ExportUpload } from '../components/ExportUpload';
 import { KindBadge, StatusBadge } from '../components/IssueBadges';
 import { api } from '../lib/api';
 import { formatDateTime, processLabel } from '../lib/format';
-import { STATUS_FILTERS, issueHref, statusFilter, type StatusFilter } from '../lib/issueList';
+import { STATUS_FILTERS, germanError, issueHref, statusFilter, type StatusFilter } from '../lib/issueList';
 import type { ImportRow, IssueSummary } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useResource } from '../lib/useResource';
@@ -49,16 +52,26 @@ export function IssuesPage() {
 
   return (
     <Stack gap="section">
-      <PageHeader title="Abstürze und Hänger" subtitle="Gleiche Fehler werden über die obersten eigenen Frames zu einem Issue zusammengefasst." />
-      <ExportUpload
-        onImported={(ids) => {
-          imports.reload();
-          if (ids.length === 1) update('import', String(ids[0]));
-          else issues.reload();
-        }}
+      <PageHeader
+        title="Issues"
+        subtitle="Abstürze und Hänger aus allen Importen. Gleiche Fehler werden über die obersten eigenen Frames zusammengefasst."
+        primaryAction={
+          <Button asChild>
+            <RouterLink to="/imports">Export importieren</RouterLink>
+          </Button>
+        }
       />
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <span className="text-text-subtle">Status</span>
+      {imports.data?.length === 0 && (
+        <ExportUpload
+          onImported={(ids) => {
+            imports.reload();
+            // A new export can bring back resolved issues, so the list shows every status
+            setParams(ids.length === 1 ? { status: 'all', import: String(ids[0]) } : { status: 'all' }, { replace: true });
+          }}
+        />
+      )}
+      <ActionBar>
+        <ActionBarRow className="flex-wrap">
         <Select value={filter} onValueChange={(value) => update('status', value === 'active' ? null : value)}>
           <SelectTrigger className="w-full sm:w-64" aria-label="Nach Status filtern">
             <SelectValue />
@@ -69,7 +82,6 @@ export function IssuesPage() {
             ))}
           </SelectContent>
         </Select>
-        <span className="text-text-subtle sm:ml-4">Import</span>
         <Select value={importId ?? 'all'} onValueChange={(value) => update('import', value === 'all' ? null : value)}>
           <SelectTrigger className="w-full sm:w-80" aria-label="Nach Import filtern">
             <SelectValue />
@@ -81,8 +93,9 @@ export function IssuesPage() {
             ))}
           </SelectContent>
         </Select>
-        {hidden > 0 && <span className="text-text-subtle">{hidden} weitere ausgeblendet</span>}
-      </div>
+        {hidden > 0 && <span className="typography-small text-text-subtle">{hidden} weitere ausgeblendet</span>}
+        </ActionBarRow>
+      </ActionBar>
       {issues.loading && !issues.data ? (
         <TableLoading columns={COLUMNS} rows={4} />
       ) : (
@@ -99,7 +112,7 @@ export function IssuesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {issues.error && <TableError columns={COLUMNS} title="Issues konnten nicht geladen werden" description={issues.error} onRetry={issues.reload} retryLabel="Erneut versuchen" />}
+            {issues.error && <TableError columns={COLUMNS} title="Issues konnten nicht geladen werden" description={germanError(issues.error)} onRetry={issues.reload} retryLabel="Erneut versuchen" />}
             {!issues.error && issues.data?.length === 0 && (
               <TableEmpty
                 columns={COLUMNS}

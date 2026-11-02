@@ -5,7 +5,6 @@ import {
   AccordionTrigger,
   ActionBar,
   ActionBarRow,
-  ActionBarSpacer,
   Attribute,
   Attributes,
   Badge,
@@ -23,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
   Sheet,
+  SheetBody,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -43,10 +43,11 @@ import {
   ToggleGroupItem,
   toast,
 } from '@getitdone-gmbh/kette-design-community';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { EntryBadge, KindBadge, StatusBadge, statusLabels } from '../components/IssueBadges';
+import { EntryBadge, KindBadge, statusLabels } from '../components/IssueBadges';
 import { api } from '../lib/api';
 import {
   crashTimeLabel,
@@ -75,6 +76,16 @@ function splitTitle(title: string): { kind: string; place: string } {
   return at > 0 ? { kind: title.slice(0, at), place: title.slice(at + 4) } : { kind: '', place: title };
 }
 
+// Long Swift names may wrap after a dot or before the argument list, never inside a word
+function breakable(text: string) {
+  return text.split(/(?<=\.)|(?=\()/).map((part, index) => (
+    <Fragment key={index}>
+      {index > 0 && <wbr />}
+      {part}
+    </Fragment>
+  ));
+}
+
 function useWideLayout(): boolean {
   const query = '(min-width: 1280px)';
   const [wide, setWide] = useState(() => window.matchMedia(query).matches);
@@ -85,6 +96,21 @@ function useWideLayout(): boolean {
     return () => media.removeEventListener('change', update);
   }, []);
   return wide;
+}
+
+// Ends stay focusable instead of disabled, so focus never falls back to the page
+function Pager({ label, previous, next, onPrevious, onNext, children }: { label: string; previous: boolean; next: boolean; onPrevious: () => void; onNext: () => void; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1 typography-small text-text-subtle">
+      <Button variant="ghost" size="icon-xs" aria-label={`Vorheriges ${label}`} aria-disabled={!previous} className={previous ? undefined : 'opacity-40'} onClick={() => previous && onPrevious()}>
+        <ChevronLeft aria-hidden />
+      </Button>
+      {children}
+      <Button variant="ghost" size="icon-xs" aria-label={`Nächstes ${label}`} aria-disabled={!next} className={next ? undefined : 'opacity-40'} onClick={() => next && onNext()}>
+        <ChevronRight aria-hidden />
+      </Button>
+    </span>
+  );
 }
 
 const ownFrames = (stack: CrashStack) => stack.frames.filter((frame) => frame.in_app && !frame.entry_point);
@@ -118,18 +144,12 @@ export function IssueDetailPage() {
   const breadcrumbs = (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <Link asChild underline="hover" color="neutral">
-        <RouterLink to={`/${listQuery ? `?${listQuery}` : ''}`}>Abstürze und Hänger</RouterLink>
+        <RouterLink to={`/${listQuery ? `?${listQuery}` : ''}`}>Issues</RouterLink>
       </Link>
       {position >= 0 && list.data && (
-        <span className="inline-flex items-center gap-1 typography-small text-text-subtle">
-          <Button variant="ghost" size="icon-xs" aria-label="Vorheriges Issue" disabled={!previous} onClick={() => previous && navigate(issueHref(previous.id, listQuery))}>
-            ‹
-          </Button>
+        <Pager label="Issue" previous={Boolean(previous)} next={Boolean(next)} onPrevious={() => previous && navigate(issueHref(previous.id, listQuery))} onNext={() => next && navigate(issueHref(next.id, listQuery))}>
           Issue {position + 1} von {list.data.length}
-          <Button variant="ghost" size="icon-xs" aria-label="Nächstes Issue" disabled={!next} onClick={() => next && navigate(issueHref(next.id, listQuery))}>
-            ›
-          </Button>
-        </span>
+        </Pager>
       )}
     </div>
   );
@@ -174,21 +194,16 @@ export function IssueDetailPage() {
         <PageHeader
           variant="record"
           titleAs="h1"
-          title={<span className="[overflow-wrap:anywhere]">{place}</span>}
+          title={<span className="break-words">{breakable(place)}</span>}
           breadcrumbs={breadcrumbs}
-          badges={
-            <>
-              <KindBadge kind={data.kind} />
-              <StatusBadge status={data.status} />
-            </>
-          }
+          badges={<KindBadge kind={data.kind} />}
           subtitle={<span className="[overflow-wrap:anywhere]">{subtitleFor(kind, current, selectedRef)}</span>}
           actions={
             <>
               <IssueStatusSelect issue={data} onSaved={issue.reload} />
               {current && (
                 <Button variant="outline" asChild>
-                  <RouterLink to={timelineLink(current)}>In Timeline öffnen</RouterLink>
+                  <RouterLink to={timelineLink(current)}>In Einträgen zeigen (±60 s)</RouterLink>
                 </Button>
               )}
               {!wide && (
@@ -200,21 +215,21 @@ export function IssueDetailPage() {
           }
           primaryAction={current ? <CopyMarkdownButton title={data.title} occurrence={current} /> : undefined}
           tabs={
-            <TabsList className="max-w-full justify-start overflow-x-auto">
+            <TabsList className="max-w-full justify-start overflow-x-auto max-sm:[mask-image:linear-gradient(to_right,black_80%,transparent)]">
               <TabsTrigger value="stack">
-                Stacktrace <TabsCount>{crashed?.frames.length ?? 0}</TabsCount>
+                Stacktrace {current && <TabsCount>{crashed?.frames.length ?? 0}</TabsCount>}
               </TabsTrigger>
               <TabsTrigger value="threads">
-                Threads <TabsCount>{others.length}</TabsCount>
+                Threads {current && <TabsCount>{others.length}</TabsCount>}
               </TabsTrigger>
               <TabsTrigger value="timeline">
-                Timeline <TabsCount>{current?.timeline.length ?? 0}</TabsCount>
+                Einträge {current && <TabsCount>{current.timeline.length}</TabsCount>}
               </TabsTrigger>
               <TabsTrigger value="occurrences">
                 Vorkommen <TabsCount>{data.occurrences.length}</TabsCount>
               </TabsTrigger>
               <TabsTrigger value="images">
-                Binaries <TabsCount>{current?.images.length ?? 0}</TabsCount>
+                Binaries {current && <TabsCount>{current.images.length}</TabsCount>}
               </TabsTrigger>
             </TabsList>
           }
@@ -236,7 +251,7 @@ export function IssueDetailPage() {
             ) : (
               <>
                 <TabsContent value="stack">
-                  {crashed ? <StackTab stack={crashed} /> : <DataStatePanel kind="empty" title="Kein Stacktrace im Event" />}
+                  {crashed ? <StackTab stack={crashed} hang={data.kind === 'hang'} /> : <DataStatePanel kind="empty" title="Kein Stacktrace im Event" />}
                 </TabsContent>
                 <TabsContent value="threads">
                   <ThreadsTab stacks={others} />
@@ -255,19 +270,22 @@ export function IssueDetailPage() {
           </div>
           {wide && (
             <aside className="min-w-0 xl:col-span-4">
-              <ContextAttributes issue={data} occurrence={current} selected={selectedRef} onSelect={(id) => setParam('occurrence', String(id))} onNoteSaved={issue.reload} />
+              <ContextAttributes issue={data} occurrence={current} error={occurrence.error} onRetry={occurrence.reload} selected={selectedRef} onSelect={(id) => setParam('occurrence', String(id))} onNoteSaved={issue.reload} />
             </aside>
           )}
         </div>
 
         <Sheet open={detailsOpen && !wide} onOpenChange={setDetailsOpen}>
-          <SheetContent side="right" size="sm">
+          <SheetContent side="right" size="sm" onOpenAutoFocus={(event) => event.preventDefault()}>
             <SheetHeader>
               <SheetTitle>Details</SheetTitle>
             </SheetHeader>
-            <div className="px-6 pb-6">
-              <ContextAttributes issue={data} occurrence={current} selected={selectedRef} onSelect={(id) => setParam('occurrence', String(id))} onNoteSaved={issue.reload} />
-            </div>
+            <SheetBody>
+              <Stack gap="block">
+                <IssueKpis issue={data} crashed={crashed} missing={missing.length} />
+                <ContextAttributes issue={data} occurrence={current} error={occurrence.error} onRetry={occurrence.reload} selected={selectedRef} onSelect={(id) => setParam('occurrence', String(id))} onNoteSaved={issue.reload} untitled />
+              </Stack>
+            </SheetBody>
           </SheetContent>
         </Sheet>
       </Stack>
@@ -277,7 +295,8 @@ export function IssueDetailPage() {
 
 function subtitleFor(kind: string, occurrence: Occurrence | null, ref: OccurrenceRef | undefined): string {
   if (!ref) return '';
-  const reason = (occurrence?.stacks[0]?.reason ?? '').replace(/^\*+\s*/, '');
+  const stack = occurrence?.stacks[0];
+  const reason = [(stack?.reason ?? '').replace(/^\*+\s*/, ''), stack?.signal].filter(Boolean).join(', ');
   const hang = occurrence?.duration_ms ? `${occurrence.duration_ms.toLocaleString('de-DE')} ms blockiert` : '';
   return [[kind, reason || hang].filter(Boolean).join(': '), processLabel(ref.process), `${ref.app_version} (${ref.app_build})`, `${ref.device_model}, iOS ${ref.os_version}`, formatDateTime(ref.ts)]
     .filter(Boolean)
@@ -287,7 +306,7 @@ function subtitleFor(kind: string, occurrence: Occurrence | null, ref: Occurrenc
 function timelineLink(occurrence: Occurrence): string {
   const reference = referenceTime(occurrence);
   const around = (seconds: number) => new Date(new Date(reference).getTime() + seconds * 1000).toISOString();
-  return `/timeline?from=${encodeURIComponent(around(-60))}&to=${encodeURIComponent(around(60))}`;
+  return `/timeline?from=${encodeURIComponent(around(-60))}&to=${encodeURIComponent(around(60))}&entry=${occurrence.id}`;
 }
 
 function CopyMarkdownButton({ title, occurrence }: { title: string; occurrence: Occurrence }) {
@@ -310,13 +329,23 @@ function IssueStatusSelect({ issue, onSaved }: { issue: IssueDetail; onSaved: ()
     try {
       await api(`/api/issues/${issue.id}`, { method: 'PATCH', body: JSON.stringify({ status: next }) });
       onSaved();
-      if (undo) return;
+      if (undo) {
+        toast({ title: `Status wiederhergestellt: ${statusLabels[next]}` });
+        return;
+      }
       const leavesList = next === 'resolved' || next === 'ignored';
-      toast({
+      const shown = toast({
         title: `Status: ${statusLabels[next]}`,
         description: leavesList ? 'Erscheint nicht mehr unter „Offen und in Analyse“.' : undefined,
         action: (
-          <Button variant="outline" size="sm" onClick={() => apply(previous, next, true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              shown.dismiss();
+              apply(previous, next, true);
+            }}
+          >
             Rückgängig
           </Button>
         ) as never,
@@ -329,7 +358,7 @@ function IssueStatusSelect({ issue, onSaved }: { issue: IssueDetail; onSaved: ()
 
   return (
     <Select value={status} onValueChange={(value) => apply(value as IssueStatus, status, false)}>
-      <SelectTrigger className="w-44" aria-label="Status">
+      <SelectTrigger size="md" className="w-44" aria-label="Status">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -372,12 +401,18 @@ function IssueKpis({ issue, crashed, missing }: { issue: IssueDetail; crashed: C
 function ContextAttributes({
   issue,
   occurrence,
+  error,
+  onRetry,
   selected,
   onSelect,
   onNoteSaved,
+  untitled,
 }: {
   issue: IssueDetail;
   occurrence: Occurrence | null;
+  error: string | null;
+  onRetry: () => void;
+  untitled?: boolean;
   selected: OccurrenceRef | undefined;
   onSelect: (id: number) => void;
   onNoteSaved: () => void;
@@ -400,18 +435,25 @@ function ContextAttributes({
   }
 
   return (
-    <Attributes variant="aside" title="Kontext" titleAs="h2" state={occurrence ? 'ready' : 'loading'}>
+    <Attributes
+      variant="aside"
+      title={untitled ? undefined : 'Kontext'}
+      titleAs="h2"
+      state={error ? 'error' : occurrence ? 'ready' : 'loading'}
+      errorState={
+        <Stack gap="block">
+          <span>{error ? germanError(error) : ''}</span>
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            Erneut versuchen
+          </Button>
+        </Stack>
+      }
+    >
       {issue.occurrences.length > 1 && (
         <Attribute label="Vorkommen">
-          <span className="inline-flex items-center gap-1">
-            <Button variant="ghost" size="icon-xs" aria-label="Vorheriges Vorkommen" disabled={index <= 0} onClick={() => onSelect(issue.occurrences[index - 1].id)}>
-              ‹
-            </Button>
+          <Pager label="Vorkommen" previous={index > 0} next={index < issue.occurrences.length - 1} onPrevious={() => onSelect(issue.occurrences[index - 1].id)} onNext={() => onSelect(issue.occurrences[index + 1].id)}>
             {index + 1} von {issue.occurrences.length}
-            <Button variant="ghost" size="icon-xs" aria-label="Nächstes Vorkommen" disabled={index >= issue.occurrences.length - 1} onClick={() => onSelect(issue.occurrences[index + 1].id)}>
-              ›
-            </Button>
-          </span>
+          </Pager>
         </Attribute>
       )}
       {occurrence && <Attribute label={occurrence.window.exact ? 'Zeitpunkt' : 'Absturz'} value={crashTimeLabel(occurrence)} />}
@@ -432,24 +474,29 @@ function ContextAttributes({
         ) : null}
       </Attribute>
       <Attribute label="Notiz">
-        <NoteField key={issue.note} note={issue.note} onCommit={saveNote} />
+        <NoteField note={issue.note} onCommit={saveNote} />
       </Attribute>
     </Attributes>
   );
 }
 
-// Saves on Enter or when leaving the field, Escape restores the saved text
+// Saves on Enter or when leaving the field and keeps focus there; Escape restores the saved text
 function NoteField({ note, onCommit }: { note: string; onCommit: (note: string) => void }) {
   const [draft, setDraft] = useState(note);
+  const field = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (document.activeElement !== field.current) setDraft(note);
+  }, [note]);
   return (
     <Input
+      ref={field}
       value={draft}
-      placeholder="Ticket, Ursache oder Fix"
+      placeholder="Ticket oder Ursache"
       aria-label="Notiz, z. B. Ticket, Ursache oder Fix"
       onChange={(event) => setDraft(event.target.value)}
       onBlur={() => onCommit(draft.trim())}
       onKeyDown={(event) => {
-        if (event.key === 'Enter') event.currentTarget.blur();
+        if (event.key === 'Enter') onCommit(draft.trim());
         if (event.key === 'Escape') setDraft(note);
       }}
     />
@@ -476,7 +523,7 @@ function foldSystemFrames(frames: Frame[]): FrameRow[] {
   return rows;
 }
 
-function FrameRowView({ frame, isCrashSite }: { frame: Frame; isCrashSite: boolean }) {
+function FrameRowView({ frame, isCrashSite, hang }: { frame: Frame; isCrashSite: boolean; hang?: boolean }) {
   const location = frameLocation(frame);
   const library = frame.library ? LIBRARY_NAMES[frame.library] ?? frame.library : null;
   return (
@@ -488,8 +535,8 @@ function FrameRowView({ frame, isCrashSite }: { frame: Frame; isCrashSite: boole
       <TableCell className="hidden w-12 text-right tabular-nums sm:table-cell">{frame.index}</TableCell>
       <TableCell className="break-words">
         <div className="flex flex-wrap items-center gap-1">
-          <span className="font-mono break-all">{frameLabel(frame)}</span>
-          {isCrashSite && <Badge variant="destructive" tinted>Absturzstelle</Badge>}
+          <span className="font-mono break-words">{breakable(frameLabel(frame))}</span>
+          {isCrashSite && <Badge variant={hang ? 'warning' : 'destructive'} tinted>{hang ? 'Hängt hier' : 'Absturzstelle'}</Badge>}
           {frame.in_app && !frame.entry_point && <Badge variant="info" tinted>Eigener Code</Badge>}
           {frame.entry_point && <Badge variant="secondary" tinted>Einstieg</Badge>}
           {library && <Badge variant="outline">{library}</Badge>}
@@ -505,7 +552,7 @@ function FrameRowView({ frame, isCrashSite }: { frame: Frame; isCrashSite: boole
   );
 }
 
-function FramesTable({ stack, onlyOwn, crashed }: { stack: CrashStack; onlyOwn: boolean; crashed: boolean }) {
+function FramesTable({ stack, onlyOwn, crashed, hang }: { stack: CrashStack; onlyOwn: boolean; crashed: boolean; hang?: boolean }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const frames = onlyOwn ? stack.frames.filter((frame) => frame.in_app || frame.library) : stack.frames;
   const rows = foldSystemFrames(frames);
@@ -527,7 +574,7 @@ function FramesTable({ stack, onlyOwn, crashed }: { stack: CrashStack; onlyOwn: 
       <TableBody>
         {rows.map((row) =>
           'frame' in row ? (
-            <FrameRowView key={`f-${row.position}`} frame={row.frame} isCrashSite={crashed && row.position === 0 && !onlyOwn} />
+            <FrameRowView key={`f-${row.position}`} frame={row.frame} isCrashSite={crashed && row.position === 0 && !onlyOwn} hang={hang} />
           ) : expanded.has(row.key) ? (
             <Fragment key={row.key}>
               {row.collapsed.map((frame, index) => <FrameRowView key={`${row.key}-${index}`} frame={frame} isCrashSite={false} />)}
@@ -562,37 +609,51 @@ function FrameScope({ stack, value, onChange }: { stack: CrashStack; value: 'all
   );
 }
 
-function StackTab({ stack }: { stack: CrashStack }) {
+function StackTab({ stack, hang }: { stack: CrashStack; hang: boolean }) {
   const [scope, setScope] = useState<'all' | 'own'>('all');
   return (
     <Stack gap="block">
       <ActionBar>
         <ActionBarRow>
           <FrameScope stack={stack} value={scope} onChange={setScope} />
-          <ActionBarSpacer />
-          {stack.signal && <span className="typography-small text-text-subtle">{stack.name}, {stack.signal}</span>}
         </ActionBarRow>
       </ActionBar>
-      <FramesTable stack={stack} onlyOwn={scope === 'own'} crashed />
+      <FramesTable stack={stack} onlyOwn={scope === 'own'} crashed hang={hang} />
     </Stack>
   );
 }
 
 function ThreadsTab({ stacks }: { stacks: CrashStack[] }) {
   if (stacks.length === 0) return <DataStatePanel kind="empty" title="Keine weiteren Threads im Event" />;
-  const sorted = [...stacks].sort((a, b) => ownFrames(b).length - ownFrames(a).length);
+  const withOwn = stacks.filter((stack) => ownFrames(stack).length > 0);
+  const systemOnly = stacks.filter((stack) => ownFrames(stack).length === 0);
   return (
-    <Accordion type="multiple">
-      {sorted.map((stack, index) => (
+    <Accordion type="multiple" className="typography-small">
+      {withOwn.map((stack, index) => (
         <AccordionItem key={index} value={String(index)}>
           <AccordionTrigger>
-            {stack.name} · {ownFrames(stack).length > 0 ? `${ownFrames(stack).length} eigene Frames` : 'nur System'}
+            {stack.name} · {ownFrames(stack).length} eigene Frames
           </AccordionTrigger>
           <AccordionContent>
             <FramesTable stack={stack} onlyOwn={false} crashed={false} />
           </AccordionContent>
         </AccordionItem>
       ))}
+      {systemOnly.length > 0 && (
+        <AccordionItem value="system">
+          <AccordionTrigger>{systemOnly.length} Threads nur mit System-Frames</AccordionTrigger>
+          <AccordionContent>
+            <Stack gap="block">
+              {systemOnly.map((stack, index) => (
+                <Stack key={index} gap="block">
+                  <span className="text-text-subtle">{stack.name}</span>
+                  <FramesTable stack={stack} onlyOwn={false} crashed={false} />
+                </Stack>
+              ))}
+            </Stack>
+          </AccordionContent>
+        </AccordionItem>
+      )}
     </Accordion>
   );
 }
@@ -648,13 +709,15 @@ function TimelineTab({ entries, occurrence }: { entries: TimelineEntry[]; occurr
     <Stack gap="block">
       <ActionBar>
         <ActionBarRow>
-          <ToggleGroup type="single" variant="segmented" value={filter} onValueChange={(next) => next && setFilter(next as TimelineFilter)} aria-label="Einträge filtern">
-            {(Object.keys(timelineFilters) as TimelineFilter[]).map((key) => (
-              <ToggleGroupItem key={key} value={key}>
-                {timelineFilters[key]} {counts[key]}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <div className="max-w-full overflow-x-auto">
+            <ToggleGroup type="single" variant="segmented" value={filter} onValueChange={(next) => next && setFilter(next as TimelineFilter)} aria-label="Einträge filtern">
+              {(Object.keys(timelineFilters) as TimelineFilter[]).map((key) => (
+                <ToggleGroupItem key={key} value={key} className="whitespace-nowrap">
+                  {timelineFilters[key]} {counts[key]}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
         </ActionBarRow>
       </ActionBar>
       <Table density="compact" stickyHeader maxHeight="70vh">
@@ -675,7 +738,7 @@ function TimelineTab({ entries, occurrence }: { entries: TimelineEntry[]; occurr
             </TableHead>
             <TableHead className="hidden w-32 sm:table-cell">Uhrzeit</TableHead>
             <TableHead className="hidden w-40 md:table-cell">Prozess</TableHead>
-            <TableHead className="w-36">Typ</TableHead>
+            <TableHead className="hidden w-36 sm:table-cell">Typ</TableHead>
             <TableHead>Inhalt</TableHead>
           </TableRow>
         </TableHeader>
@@ -706,10 +769,13 @@ function TimelineTab({ entries, occurrence }: { entries: TimelineEntry[]; occurr
                 <TableCell className="text-right tabular-nums whitespace-nowrap">{isIssue && !occurrence.window.exact ? 'danach' : relativeSeconds(entry.ts, reference)}</TableCell>
                 <TableCell className="hidden tabular-nums whitespace-nowrap sm:table-cell">{formatTime(entry.ts)}</TableCell>
                 <TableCell className="hidden md:table-cell">{processLabel(entry.process)}</TableCell>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   <EntryBadge entry={entry} />
                 </TableCell>
-                <TableCell className="break-words">
+                <TableCell className="[overflow-wrap:anywhere]">
+                  <div className="mb-1 sm:hidden">
+                    <EntryBadge entry={entry} />
+                  </div>
                   {entry.kind === 'app_log' && entry.category ? <span className="text-text-subtle">{entry.category}: </span> : null}
                   {entry.message}
                   <div className="text-text-subtle md:hidden">{processLabel(entry.process)}</div>
