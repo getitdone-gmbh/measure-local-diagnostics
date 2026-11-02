@@ -262,3 +262,11 @@ def test_issues_can_be_filtered_by_import(client):
     assert imports[0]["issue_count"] >= 1
     assert len(client.get(f"/api/issues?import_id={first['import_id']}").json()) >= 1
     assert client.get("/api/issues?import_id=999999").json() == []
+
+
+def test_summaries_use_ui_number_format_and_readable_keys():
+    from app.importer import _summary
+    assert _summary({"type": "memory_usage_absolute", "memory_usage_absolute": {"used_memory": 12288, "available_memory": 3430400}}) == "Memory 12 MB used, 3,350 MB available"
+    assert _summary({"type": "cpu_usage", "cpu_usage": {"percentage_usage": 0.0, "num_cores": 6}}) == "CPU 0.0% (6 cores)"
+    assert _summary({"type": "app_hang", "app_hang": {"duration": 2000}}) == "Hang 2,000 ms"
+    assert _summary({"type": "session_start", "session_start": {}}) == "Session start"

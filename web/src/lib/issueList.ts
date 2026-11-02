@@ -1,4 +1,4 @@
-import { api } from './api';
+import { ApiError, api } from './api';
 import type { IssueSummary } from './types';
 
 export const STATUS_FILTERS = {
@@ -32,4 +32,10 @@ export function readableError(message: string): string {
   if (/failed to fetch|network/i.test(message)) return 'No connection to the server.';
   if (/401|unauthor|token/i.test(message)) return 'Your session has expired. Please sign in again.';
   return 'The server reported an error.';
+}
+
+// A rejected file (4xx) keeps the server's reason; network and server failures get the readable sentence
+export function uploadError(reason: unknown): string {
+  if (reason instanceof ApiError && reason.status >= 400 && reason.status < 500 && reason.status !== 401) return reason.message;
+  return `${readableError((reason as Error).message)} Please try again.`;
 }

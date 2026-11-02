@@ -56,6 +56,7 @@ import {
   frameLabel,
   frameLocation,
   occurrenceToMarkdown,
+  plural,
   processLabel,
   referenceTime,
   relativeSeconds,
@@ -203,7 +204,7 @@ export function IssueDetailPage() {
               <IssueStatusSelect issue={data} onSaved={issue.reload} />
               {current && (
                 <Button variant="outline" asChild>
-                  <RouterLink to={timelineLink(current)}>Show in entries (±60 s)</RouterLink>
+                  <RouterLink to={timelineLink(current)}>Show in Entries (±60 s)</RouterLink>
                 </Button>
               )}
               {!wide && (
@@ -594,7 +595,7 @@ function FramesTable({ stack, onlyOwn, crashed, hang }: { stack: CrashStack; onl
               <TableCell className="hidden sm:table-cell" />
               <TableCell colSpan={3}>
                 <Button variant="link" size="inline" onClick={() => setExpanded((current) => new Set(current).add(row.key))}>
-                  Show {row.collapsed.length} system frames ({row.binary})
+                  Show {plural(row.collapsed.length, 'system frame')} ({row.binary})
                 </Button>
               </TableCell>
             </TableRow>
@@ -642,7 +643,7 @@ function ThreadsTab({ stacks }: { stacks: CrashStack[] }) {
       {withOwn.map((stack, index) => (
         <AccordionItem key={index} value={String(index)}>
           <AccordionTrigger>
-            {stack.name} · {ownFrames(stack).length} own frames
+            {stack.name} · {plural(ownFrames(stack).length, 'own frame')}
           </AccordionTrigger>
           <AccordionContent>
             <FramesTable stack={stack} onlyOwn={false} crashed={false} />
@@ -651,7 +652,7 @@ function ThreadsTab({ stacks }: { stacks: CrashStack[] }) {
       ))}
       {systemOnly.length > 0 && (
         <AccordionItem value="system">
-          <AccordionTrigger>{systemOnly.length} threads with system frames only</AccordionTrigger>
+          <AccordionTrigger>{plural(systemOnly.length, 'thread')} with system frames only</AccordionTrigger>
           <AccordionContent>
             <Stack gap="block">
               {systemOnly.map((stack, index) => (
@@ -858,7 +859,7 @@ function ImagesTab({ images }: { images: Occurrence['images'] }) {
             </TableCell>
             <TableCell className="hidden font-mono sm:table-cell">{image.uuid} <span className="text-text-subtle">{image.arch}</span></TableCell>
             <TableCell>
-              <Badge variant={image.symbols ? 'success' : 'warning'} tinted>{image.symbols ? 'available' : 'missing'}</Badge>
+              <Badge variant={image.symbols ? 'success' : 'warning'} tinted>{image.symbols ? 'Available' : 'Missing'}</Badge>
             </TableCell>
           </TableRow>
         ))}

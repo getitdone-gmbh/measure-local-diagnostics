@@ -31,7 +31,7 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 
 import { EntryBadge } from '../components/IssueBadges';
 import { api } from '../lib/api';
-import { formatDateTime, processLabel } from '../lib/format';
+import { formatDateTime, plural, processLabel } from '../lib/format';
 import { readableError } from '../lib/issueList';
 import type { EntriesResponse, ImportRow } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -89,7 +89,7 @@ export function TimelinePage() {
     <>
       {select('import', 'Import', (imports.data ?? []).map((row) => [String(row.id), row.filename]))}
       {select('process', 'Process', [['app', 'App'], ['autofill', 'Autofill extension']])}
-      {select('kind', 'Kind', [['app_log', 'App logs'], ['event', 'Measure events'], ['span', 'Spans']])}
+      {select('kind', 'Source', [['app_log', 'App logs'], ['event', 'Measure events'], ['span', 'Spans']])}
       {select('level', 'Level', [['debug', 'debug'], ['info', 'info'], ['notice', 'notice'], ['warning', 'warning'], ['error', 'error'], ['fault', 'fault']])}
     </>
   );
@@ -129,7 +129,7 @@ export function TimelinePage() {
             </Button>
           )}
           <span className="basis-full typography-small text-text-subtle sm:basis-auto" aria-live="polite">
-            {entries.data ? (total > shown ? `${total.toLocaleString('en-GB')} entries, ${windowed ? 'first' : 'newest'} ${shown} shown` : `${total.toLocaleString('en-GB')} ${total === 1 ? 'entry' : 'entries'}`) : ''}
+            {entries.data ? (total > shown ? `${total.toLocaleString('en-GB')} entries, ${windowed ? 'first' : 'newest'} ${shown} shown` : plural(total, 'entry', 'entries')) : ''}
             {windowed ? `, ${formatDateTime(params.get('from'))} to ${formatDateTime(params.get('to'))}` : ''}
           </span>
         </ActionBarRow>

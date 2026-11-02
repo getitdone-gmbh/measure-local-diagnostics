@@ -57,7 +57,7 @@ export function IssuesPage() {
         subtitle="Crashes and hangs from all imports. Identical failures are grouped by their topmost own frames."
         primaryAction={
           <Button asChild>
-            <RouterLink to="/imports">Import export</RouterLink>
+            <RouterLink to="/imports">Import an export</RouterLink>
           </Button>
         }
       />

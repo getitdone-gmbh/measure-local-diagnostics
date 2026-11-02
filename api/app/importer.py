@@ -25,6 +25,16 @@ def _parse_ts(value: str | None) -> datetime | None:
         return None
 
 
+def _number(value) -> str:
+    # Thousands separator and decimal point like the web UI (en-GB)
+    return f"{value:,}" if isinstance(value, (int, float)) else "?"
+
+
+def _readable(kind: str) -> str:
+    # Event keys like "session_start" read as "Session start"
+    return kind.replace("_", " ").capitalize()
+
+
 def _summary(event: dict) -> str:
     kind = event.get("type", "")
     data = event.get(kind) or {}
@@ -32,7 +42,7 @@ def _summary(event: dict) -> str:
         first = (data.get("exceptions") or [{}])[0]
         return f'{first.get("type", "Exception")} {first.get("message") or ""}'.strip()
     if kind == "app_hang":
-        return f'Hang {data.get("duration", "?")} ms'
+        return f'Hang {_number(data.get("duration"))} ms'
     if kind == "http":
         return f'{(data.get("method") or "").upper()} {data.get("url", "")} → {data.get("status_code", "–")}'
     if kind.startswith("gesture_"):
@@ -44,19 +54,19 @@ def _summary(event: dict) -> str:
         return " ".join(str(data.get(key)) for key in ("type", "class_name") if data.get(key))
     if kind == "cpu_usage":
         usage = data.get("percentage_usage")
-        return f'CPU {round(usage, 1) if isinstance(usage, (int, float)) else "?"} % ({data.get("num_cores", "?")} cores)'
+        return f'CPU {_number(round(usage, 1) if isinstance(usage, (int, float)) else None)}% ({data.get("num_cores", "?")} cores)'
     if kind == "memory_usage_absolute":
         # Measure reports kilobytes
         used, available = data.get("used_memory"), data.get("available_memory")
-        return f'Memory {round(used / 1024)} MB used, {round(available / 1024)} MB available' if used and available else "Memory"
+        return f'Memory {_number(round(used / 1024))} MB used, {_number(round(available / 1024))} MB available' if used and available else "Memory"
     if kind in ("cold_launch", "warm_launch", "hot_launch"):
         start, drawn = data.get("process_start_uptime") or data.get("app_visible_uptime"), data.get("on_next_draw_uptime")
-        return f'{kind.replace("_", " ")} {drawn - start} ms' if start and drawn else kind.replace("_", " ")
+        return f'{_readable(kind)} {_number(drawn - start)} ms' if start and drawn else _readable(kind)
     if kind == "log":
         return data.get("body", "")
     if kind == "bug_report":
         return data.get("description", "")
-    return kind
+    return _readable(kind)
 
 
 def _entry_from_line(entry: dict) -> dict:

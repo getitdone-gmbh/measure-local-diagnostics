@@ -1,12 +1,51 @@
-import type { Frame, Occurrence, Stack } from './types';
+import type { Frame, Occurrence, Stack, TimelineEntry } from './types';
 
-const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'medium' });
-const dateMinutes = new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'short' });
+const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'medium' });
+const dateMinutes = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
 const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
 
 export const formatDateTime = (value: string | null | undefined) => (value ? dateTime.format(new Date(value)) : 'unknown');
 export const formatTime = (value: string) => time.format(new Date(value));
 export const formatDateMinutes = (value: string | null | undefined) => (value ? dateMinutes.format(new Date(value)) : 'unknown');
+
+// Count with the matching noun, e.g. "1 own frame", "3 own frames"
+export function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${count.toLocaleString('en-GB')} ${count === 1 ? singular : pluralForm}`;
+}
+
+const eventLabels: Record<string, string> = {
+  exception: 'Crash',
+  app_hang: 'Hang',
+  gesture_click: 'Tap',
+  gesture_long_click: 'Long press',
+  gesture_scroll: 'Scroll',
+  screen_view: 'Screen',
+  lifecycle_app: 'App state',
+  lifecycle_view_controller: 'View controller',
+  lifecycle_swift_ui: 'SwiftUI view',
+  http: 'HTTP',
+  cpu_usage: 'CPU',
+  memory_usage_absolute: 'Memory',
+  cold_launch: 'Cold launch',
+  warm_launch: 'Warm launch',
+  hot_launch: 'Launch',
+  session_start: 'Session start',
+  bug_report: 'Export',
+  network_change: 'Network change',
+  span: 'Span',
+  log: 'Measure log',
+};
+
+// Unknown keys like "foo_bar" still read as "Foo bar"
+export const eventLabel = (type: string | null | undefined) => {
+  if (!type) return 'Event';
+  const readable = type.replace(/_/g, ' ');
+  return eventLabels[type] ?? readable.charAt(0).toUpperCase() + readable.slice(1);
+};
+
+// The type label of a timeline entry, the same text the badges show
+export const entryLabel = (entry: Pick<TimelineEntry, 'kind' | 'level' | 'event_type'>) =>
+  entry.kind === 'app_log' ? `Log ${entry.level}` : eventLabel(entry.kind === 'span' ? 'span' : entry.event_type);
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString('en-GB')} KB`;
@@ -58,7 +97,7 @@ export function occurrenceToMarkdown(title: string, occurrence: Occurrence, link
   const lastSteps = occurrence.timeline
     .filter((entry) => new Date(entry.ts) <= new Date(reference) && entry.id !== occurrence.id)
     .slice(-15)
-    .map((entry) => `- \`${relativeSeconds(entry.ts, reference)}\` ${processLabel(entry.process)}, ${entry.event_type ?? entry.category ?? entry.kind}: ${entry.message ?? ''}`);
+    .map((entry) => `- \`${relativeSeconds(entry.ts, reference)}\` ${processLabel(entry.process)}, ${entryLabel(entry)}: ${entry.message ?? ''}`);
   return [
     `## ${title}`,
     '',
@@ -66,7 +105,7 @@ export function occurrenceToMarkdown(title: string, occurrence: Occurrence, link
     '',
     `| | |`,
     `|---|---|`,
-    `| Time | ${crashTimeLabel(occurrence)} |`,
+    `| ${occurrence.window.exact ? 'Time' : 'Crash'} | ${crashTimeLabel(occurrence)} |`,
     `| Process | ${processLabel(occurrence.process)} |`,
     `| App | ${context.app_version ?? '?'} (${context.app_build ?? '?'}) |`,
     `| Device | ${context.device_model ?? '?'}, iOS ${context.os_version ?? '?'} |`,
@@ -77,7 +116,7 @@ export function occurrenceToMarkdown(title: string, occurrence: Occurrence, link
     '',
     crashed ? stackToMarkdown(crashed) : '',
     '',
-    '**Last steps before**',
+    `**Last steps before the ${occurrence.kind}**`,
     ...lastSteps,
   ].join('\n');
 }

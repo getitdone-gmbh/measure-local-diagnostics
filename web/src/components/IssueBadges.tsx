@@ -1,5 +1,6 @@
 import { Badge } from '@getitdone-gmbh/kette-design-community';
 
+import { entryLabel } from '../lib/format';
 import type { IssueKind, IssueStatus, TimelineEntry } from '../lib/types';
 
 export const statusLabels: Record<IssueStatus, string> = {
@@ -16,30 +17,6 @@ const statusVariants = {
   resolved: 'success',
   ignored: 'secondary',
 } as const;
-
-const eventLabels: Record<string, string> = {
-  exception: 'Crash',
-  app_hang: 'Hang',
-  gesture_click: 'Tap',
-  gesture_long_click: 'Long press',
-  gesture_scroll: 'Scroll',
-  screen_view: 'Screen',
-  lifecycle_app: 'App state',
-  lifecycle_view_controller: 'View controller',
-  lifecycle_swift_ui: 'SwiftUI view',
-  http: 'HTTP',
-  cpu_usage: 'CPU',
-  memory_usage_absolute: 'Memory',
-  cold_launch: 'Cold launch',
-  warm_launch: 'Warm launch',
-  hot_launch: 'Launch',
-  bug_report: 'Export',
-  network_change: 'Network change',
-  span: 'Span',
-  log: 'Measure log',
-};
-
-export const eventLabel = (type: string | null | undefined) => (type ? eventLabels[type] ?? type : 'Event');
 
 export function KindBadge({ kind }: { kind: IssueKind }) {
   return (
@@ -63,11 +40,11 @@ export function EntryBadge({ entry }: { entry: Pick<TimelineEntry, 'kind' | 'lev
     const variant = entry.level === 'error' || entry.level === 'fault' ? 'destructive' : entry.level === 'warning' ? 'warning' : 'secondary';
     return (
       <Badge variant={variant} tinted>
-        Log {entry.level}
+        {entryLabel(entry)}
       </Badge>
     );
   }
   if (entry.event_type === 'exception') return <KindBadge kind="crash" />;
   if (entry.event_type === 'app_hang') return <KindBadge kind="hang" />;
-  return <Badge variant="outline">{eventLabel(entry.kind === 'span' ? 'span' : entry.event_type)}</Badge>;
+  return <Badge variant="outline">{entryLabel(entry)}</Badge>;
 }

@@ -22,7 +22,7 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { ExportUpload } from '../components/ExportUpload';
 import { api } from '../lib/api';
-import { formatDateTime } from '../lib/format';
+import { formatDateTime, plural } from '../lib/format';
 import { readableError } from '../lib/issueList';
 import type { ImportRow } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -80,7 +80,7 @@ export function ImportsPage() {
               <TableHead className="hidden md:table-cell">App</TableHead>
               <TableHead className="hidden lg:table-cell">Exported</TableHead>
               <TableHead className="hidden lg:table-cell">Complete</TableHead>
-              <TableHead className="hidden lg:table-cell">Deleted on</TableHead>
+              <TableHead className="hidden lg:table-cell">Kept until</TableHead>
               <TableHead><span className="sr-only">Actions</span></TableHead>
             </TableRow>
           </TableHeader>
@@ -105,10 +105,10 @@ export function ImportsPage() {
                 <TableCell className="hidden lg:table-cell">
                   {row.flush_complete === false ? (
                     <span title="The app could not hand over the last Measure events before the export.">
-                      <Badge variant="warning" tinted>incomplete</Badge>
+                      <Badge variant="warning" tinted>Incomplete</Badge>
                     </span>
                   ) : (
-                    <Badge variant="success" tinted>yes</Badge>
+                    <Badge variant="success" tinted>Yes</Badge>
                   )}
                 </TableCell>
                 <TableCell className="hidden whitespace-nowrap lg:table-cell">{formatDateTime(row.expires_at)}</TableCell>
@@ -137,11 +137,11 @@ function ImportContent({ row }: { row: ImportRow }) {
   return (
     <div>
       <Link asChild underline="hover">
-        <RouterLink to={`/?status=all&import=${row.id}`}>{row.issue_count} {row.issue_count === 1 ? 'Issue' : 'Issues'}</RouterLink>
+        <RouterLink to={`/?status=all&import=${row.id}`}>{plural(row.issue_count, 'issue')}</RouterLink>
       </Link>
       <span className="text-text-subtle"> · </span>
       <Link asChild underline="hover">
-        <RouterLink to={`/timeline?import=${row.id}`}>{row.entry_count.toLocaleString('en-GB')} {row.entry_count === 1 ? 'entry' : 'entries'}</RouterLink>
+        <RouterLink to={`/timeline?import=${row.id}`}>{plural(row.entry_count, 'entry', 'entries')}</RouterLink>
       </Link>
     </div>
   );

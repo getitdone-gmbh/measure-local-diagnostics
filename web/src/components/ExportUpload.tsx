@@ -2,6 +2,8 @@ import { FileUpload, toast } from '@getitdone-gmbh/kette-design-community';
 import { useState } from 'react';
 
 import { upload } from '../lib/api';
+import { plural } from '../lib/format';
+import { uploadError } from '../lib/issueList';
 import type { ImportResult } from '../lib/types';
 
 // Drop zone for one or more diagnostics export ZIPs
@@ -25,12 +27,12 @@ export function ExportUpload({ onImported }: { onImported: (importIds: number[])
         else ids.push(result.import_id);
       }
       toast({
-        title: `${files.length} export${files.length === 1 ? '' : 's'} imported`,
-        description: `${inserted} new entries, ${issues} ${issues === 1 ? 'crash or hang' : 'crashes and hangs'}${duplicates ? `, ${duplicates} already imported` : ''}.${ids.length === 1 ? ' The list now shows only this export.' : ''}`,
+        title: `${plural(files.length, 'export')} imported`,
+        description: `${plural(inserted, 'new entry', 'new entries')}, ${issues} ${issues === 1 ? 'crash or hang' : 'crashes and hangs'}${duplicates ? `, ${duplicates} already imported` : ''}.${ids.length === 1 ? ' The list now shows only this export.' : ''}`,
       });
       onImported(ids);
     } catch (reason) {
-      setError(`Import failed: ${(reason as Error).message}`);
+      setError(`Import failed: ${uploadError(reason)}`);
     } finally {
       setLoading(false);
     }
@@ -41,7 +43,7 @@ export function ExportUpload({ onImported }: { onImported: (importIds: number[])
       accept=".zip,application/zip"
       multiple
       loading={loading}
-      loadingText="Importing export …"
+      loadingText="Importing …"
       titleText="Drop a diagnostics export here or choose one"
       descriptionText="Diagnostics export as a ZIP with manifest.json and *.jsonl, as the app exports it"
       error={error}

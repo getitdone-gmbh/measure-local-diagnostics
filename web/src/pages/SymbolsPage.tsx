@@ -23,10 +23,10 @@ import { useState } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 
 import { api, upload } from '../lib/api';
-import { formatBytes, formatDateMinutes, formatDateTime } from '../lib/format';
+import { formatBytes, formatDateMinutes, formatDateTime, plural } from '../lib/format';
 import type { BuildRow, IssueRef, SymbolsOverview } from '../lib/types';
 import { usePageTitle } from '../lib/usePageTitle';
-import { readableError } from '../lib/issueList';
+import { readableError, uploadError } from '../lib/issueList';
 import { useResource } from '../lib/useResource';
 
 const WATCHER_COMMAND = 'tools/install-archive-watcher.sh';
@@ -34,6 +34,12 @@ const ZIP_COMMAND = 'cd ~/Library/Developer/Xcode/Archives/<date>/<App>*.xcarchi
 
 // Xcode names archives "<App> 27.10.26, 08.05", which only repeats the archive time
 const XCODE_DEFAULT_NAME = /^\S+ \d{2}\.\d{2}\.\d{2}, \d{2}\.\d{2}( \d+)?$/;
+
+// Fallback titles already start with the kind ("Hang in …"), then it is not repeated
+const kindPrefix = (issue: IssueRef) => {
+  const kind = issue.kind === 'crash' ? 'Crash' : 'Hang';
+  return issue.title.startsWith(`${kind} `) ? '' : `${kind}: `;
+};
 
 function IssueLinks({ issues }: { issues: IssueRef[] }) {
   if (issues.length === 0) return <span className="text-text-subtle">none</span>;
@@ -43,7 +49,7 @@ function IssueLinks({ issues }: { issues: IssueRef[] }) {
         <li key={issue.id}>
           <Link asChild underline="hover">
             <RouterLink to={`/issues/${issue.id}`} title={`Issue ${issue.id}`}>
-              {issue.kind === 'crash' ? 'Crash' : 'Hang'}: {issue.title}
+              {kindPrefix(issue)}{issue.title}
             </RouterLink>
           </Link>
         </li>
@@ -89,12 +95,12 @@ export function SymbolsPage() {
     try {
       let count = 0;
       for (const file of files) count += (await upload<{ stored: unknown[] }>('/api/symbols', file)).stored.length;
-      toast({ title: `${count} ${count === 1 ? 'binary' : 'binaries'} now readable`, description: 'The build is at the top of the list, issues were regrouped.' });
+      toast({ title: `${plural(count, 'binary', 'binaries')} now readable`, description: 'The build is at the top of the list, issues were regrouped.' });
       setDone(true);
       symbols.reload();
       builds.reload();
     } catch (reason) {
-      setError(`Upload failed: ${(reason as Error).message}`);
+      setError(`Upload failed: ${uploadError(reason)}`);
     } finally {
       setLoading(false);
     }
