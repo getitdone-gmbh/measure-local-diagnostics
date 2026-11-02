@@ -26,7 +26,7 @@ import {
   TableLoading,
   TableRow,
 } from '@getitdone-gmbh/kette-design-community';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 
 import { EntryBadge } from '../components/IssueBadges';
@@ -49,6 +49,7 @@ export function TimelinePage() {
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const searchField = useRef<HTMLInputElement>(null);
   const imports = useResource(() => api<ImportRow[]>('/api/imports'), []);
   const entries = useResource(() => {
     const query = new URLSearchParams({ limit: String(LIMIT) });
@@ -109,14 +110,21 @@ export function TimelinePage() {
               update('q', search.trim());
             }}
           >
-            <Input placeholder="Suchen" value={search} onChange={(event) => setSearch(event.target.value)} onBlur={() => update('q', search.trim())} aria-label="Suchen in Nachricht, Kategorie und Typ" />
+            <Input ref={searchField} placeholder="Suchen" value={search} onChange={(event) => setSearch(event.target.value)} onBlur={() => update('q', search.trim())} aria-label="Suchen in Nachricht, Kategorie und Typ" />
           </form>
           <div className="hidden flex-wrap gap-2 lg:flex">{filters}</div>
           <Button variant="outline" className="lg:hidden" onClick={() => setFiltersOpen(true)}>
             Filter{activeFilters ? ` (${activeFilters})` : ''}
           </Button>
           {hasFilter && (
-            <Button variant="ghost" onClick={() => setParams({}, { replace: true })}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                // The button disappears with the filters, so focus moves on to the search
+                setParams({}, { replace: true });
+                searchField.current?.focus();
+              }}
+            >
               Zurücksetzen
             </Button>
           )}
