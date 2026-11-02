@@ -21,9 +21,9 @@ import { SymbolsPage } from './pages/SymbolsPage';
 import { TimelinePage } from './pages/TimelinePage';
 
 const NAVIGATION = [
-  { href: '/', label: 'Issues', match: (path: string) => path === '/' || path.startsWith('/issues') },
   { href: '/imports', label: 'Importe', match: (path: string) => path.startsWith('/imports') },
-  { href: '/timeline', label: 'Timeline', match: (path: string) => path.startsWith('/timeline') },
+  { href: '/', label: 'Issues', match: (path: string) => path === '/' || path.startsWith('/issues') },
+  { href: '/timeline', label: 'Einträge', match: (path: string) => path.startsWith('/timeline') },
   { href: '/symbols', label: 'Symbole', match: (path: string) => path.startsWith('/symbols') },
 ];
 
@@ -92,7 +92,7 @@ export function App({ user }: { user: string }) {
           />
         </TopBarEnd>
       </TopBar>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-content px-4 py-8 sm:px-6">
         <Routes>
           <Route path="/" element={<IssuesPage />} />
           <Route path="/issues/:issueId" element={<IssueDetailPage />} />

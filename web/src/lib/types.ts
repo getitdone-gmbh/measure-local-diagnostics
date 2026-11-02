@@ -25,6 +25,7 @@ export interface OccurrenceRef {
   os_version: string;
   device_model: string;
   import_id: number;
+  filename?: string;
 }
 
 export interface IssueDetail {
@@ -104,6 +105,7 @@ export interface ImportRow {
   exported_at: string;
   flush_complete: boolean | null;
   entry_count: number;
+  issue_count: number;
   expires_at: string;
 }
 

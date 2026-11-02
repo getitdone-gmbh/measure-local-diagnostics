@@ -36,7 +36,7 @@ const FILTER_KEYS = ['import', 'process', 'kind', 'level', 'q', 'from', 'to'] as
 
 // Filters live in the URL so a filtered view can be shared as a link
 export function TimelinePage() {
-  usePageTitle('Timeline');
+  usePageTitle('Einträge');
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get('q') ?? '');
   const imports = useResource(() => api<ImportRow[]>('/api/imports'), []);
@@ -76,7 +76,7 @@ export function TimelinePage() {
 
   return (
     <Stack gap="section">
-      <PageHeader title="Timeline" subtitle="Alle importierten Einträge, neueste zuerst." />
+      <PageHeader title="Einträge" subtitle="Alle Zeilen aus allen Importen, neueste zuerst: Logs, Bedienschritte, Netzwerk, Abstürze." />
       <form
         className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5"
         role="search"

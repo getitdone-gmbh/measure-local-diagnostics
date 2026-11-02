@@ -245,3 +245,11 @@ def test_crash_reporter_frames_above_terminate_path_are_not_app_code():
     assert [f["in_app"] for f in frames] == [False, False, False, True]
     swift_trap = symbolicate_frames([frame(0, "libswiftCore.dylib", 0x190000000, 0x10, False), frame(1, "Notes.debug.dylib", 0x102000000, 0x1116a8, True)], [])
     assert [f["in_app"] for f in swift_trap] == [False, True]
+
+
+def test_issues_can_be_filtered_by_import(client):
+    first = upload(client, make_export(sample_lines(), build="1"), "first.zip").json()
+    imports = client.get("/api/imports").json()
+    assert imports[0]["issue_count"] >= 1
+    assert len(client.get(f"/api/issues?import_id={first['import_id']}").json()) >= 1
+    assert client.get("/api/issues?import_id=999999").json() == []

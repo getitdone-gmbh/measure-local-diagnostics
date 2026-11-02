@@ -78,6 +78,8 @@ def list_imports(_: str = Depends(current_user)) -> list[dict]:
         """SELECT id, filename, uploaded_at, uploaded_by, app_version, app_build, os_version,
                   coalesce(device_name, device_model) AS device_model,
                   exported_at, flush_complete, entry_count,
+                  (SELECT count(DISTINCT o.issue_id) FROM occurrences o JOIN entries e ON e.id = o.entry_id
+                   WHERE e.import_id = imports.id) AS issue_count,
                   uploaded_at + make_interval(days => %s) AS expires_at
            FROM imports ORDER BY uploaded_at DESC""",
         (RETENTION_DAYS,),
@@ -94,7 +96,9 @@ def delete_import(import_id: int, _: str = Depends(current_user)) -> dict:
 
 
 @app.get("/api/issues")
-def list_issues(_: str = Depends(current_user)) -> list[dict]:
+def list_issues(import_id: int | None = None, _: str = Depends(current_user)) -> list[dict]:
+    # With import_id, only issues that occur in that export; counts still cover all imports
+    where = "" if import_id is None else "WHERE s.id IN (SELECT o2.issue_id FROM occurrences o2 JOIN entries e2 ON e2.id = o2.entry_id WHERE e2.import_id = %s)"
     return db.fetch_all(
         """SELECT s.id, s.kind, s.title, s.status, s.note,
                   count(o.entry_id) AS occurrences,
@@ -106,7 +110,9 @@ def list_issues(_: str = Depends(current_user)) -> list[dict]:
            JOIN occurrences o ON o.issue_id = s.id
            JOIN entries e ON e.id = o.entry_id
            JOIN imports i ON i.id = e.import_id
-           GROUP BY s.id ORDER BY max(e.ts) DESC"""
+           """ + where + """
+           GROUP BY s.id ORDER BY max(e.ts) DESC""",
+        () if import_id is None else (import_id,),
     )
 
 
@@ -136,7 +142,7 @@ def get_issue(issue_id: int, _: str = Depends(current_user)) -> dict:
         raise HTTPException(404, "Issue not found")
     issue["occurrences"] = db.fetch_all(
         """SELECT e.id, e.ts, e.process, e.session_id, i.app_version, i.app_build, i.os_version,
-                  coalesce(i.device_name, i.device_model) AS device_model, i.id AS import_id
+                  coalesce(i.device_name, i.device_model) AS device_model, i.id AS import_id, i.filename
            FROM occurrences o JOIN entries e ON e.id = o.entry_id JOIN imports i ON i.id = e.import_id
            WHERE o.issue_id = %s ORDER BY e.ts DESC""",
         (issue_id,),
