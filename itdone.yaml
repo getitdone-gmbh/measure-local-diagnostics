@@ -1,0 +1,22 @@
+version: "1"
+services:
+  api:
+    path: ./api
+    port: 8080
+    env:
+      WEB_ORIGIN: ${web.url}
+      RETENTION_DAYS: "90"
+      MAX_UPLOAD_MB: "200"
+  web:
+    path: ./web
+    port: 8080
+    env:
+      API_URL: ${api.url}
+addons:
+  db:
+    type: postgres
+    attachTo: [api]
+  auth:
+    type: keycloak
+    oidcType: spa
+    attachTo: [web, api]

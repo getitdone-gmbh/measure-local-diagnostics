@@ -1,0 +1,6 @@
+@import '@getitdone-gmbh/kette-design-community/theme.css';
+@import '@getitdone-gmbh/kette-design-community/animation.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
