@@ -97,7 +97,8 @@ export function occurrenceToMarkdown(title: string, occurrence: Occurrence, link
   const lastSteps = occurrence.timeline
     .filter((entry) => new Date(entry.ts) <= new Date(reference) && entry.id !== occurrence.id)
     .slice(-15)
-    .map((entry) => `- \`${relativeSeconds(entry.ts, reference)}\` ${processLabel(entry.process)}, ${entryLabel(entry)}: ${entry.message ?? ''}`);
+    // App logs keep their category, otherwise many steps read the same
+    .map((entry) => `- \`${relativeSeconds(entry.ts, reference)}\` ${processLabel(entry.process)}, ${entryLabel(entry)}${entry.kind === 'app_log' && entry.category ? `, ${entry.category}` : ''}: ${entry.message ?? ''}`);
   return [
     `## ${title}`,
     '',
